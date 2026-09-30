@@ -335,16 +335,56 @@ document.querySelectorAll('.answer').forEach((btn) => {
 // ---------- clap test ----------
 
 const THUMB_W = 200;
+const COUNTDOWN_S = 10;
+const SPOKEN_FROM = 5;
+const GO_BEEP_MS = 250;
+
+function say(text) {
+  if (!('speechSynthesis' in window)) return false;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.1;
+  u.volume = 1;
+  speechSynthesis.speak(u);
+  return true;
+}
+
+function beep(freq, ms) {
+  const ctx = state.ctx;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.8, t + 0.01);
+  gain.gain.setValueAtTime(0.8, t + ms / 1000 - 0.02);
+  gain.gain.linearRampToValueAtTime(0, t + ms / 1000);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + ms / 1000 + 0.05);
+}
+
+// The camera faces away from the screen, so the countdown is spoken:
+// silent for the first seconds (time to walk out), then "5, 4, 3, 2, 1", then a beep.
+async function audibleCountdown() {
+  for (let s = COUNTDOWN_S; s >= 1; s--) {
+    setStatus('clap-status', s > SPOKEN_FROM ? `Walk out… ${s}` : `${s}`);
+    if (s <= SPOKEN_FROM && !say(String(s))) beep(660, 100);
+    await sleep(1000);
+  }
+  setStatus('clap-status', 'CLAP!');
+  beep(1320, GO_BEEP_MS);
+  // Start listening only after the beep, so the phone's own sound isn't taken for the clap.
+  await sleep(GO_BEEP_MS + 50);
+}
 
 $('btn-clap').onclick = async () => {
   if (state.busy || !state.monitor) return;
   setBusy(true);
   $('clap-frames').innerHTML = '';
-  for (const n of [3, 2, 1]) {
-    setStatus('clap-status', `Get ready… ${n}`);
-    await sleep(800);
-  }
-  setStatus('clap-status', 'CLAP!');
+  // Speaking inside the tap unlocks speech on iOS for the rest of the countdown.
+  say('Clap test. Walk out and face the camera.');
+  state.ctx.resume().catch(() => {});
+  await audibleCountdown();
 
   const thumbH = Math.round((THUMB_W * video.videoHeight) / video.videoWidth);
   const frames = [];
@@ -365,9 +405,10 @@ $('btn-clap').onclick = async () => {
   await sleep(250); // let the last audio batches arrive
   setBusy(false);
 
-  const blocks = state.audioRing.filter((b) => b.t >= start - 100 && b.t <= end + 100);
+  const blocks = state.audioRing.filter((b) => b.t >= start && b.t <= end + 100);
   if (!blocks.length) {
     setStatus('clap-status', 'No audio arrived. Check the mic meter.');
+    say('No sound arrived. Check the microphone.');
     return;
   }
   const loudest = blocks.reduce((a, b) => (b.p > a.p ? b : a));
@@ -377,6 +418,7 @@ $('btn-clap').onclick = async () => {
   const snrDb = peakDb - toDb(background);
   if (snrDb < 15) {
     setStatus('clap-status', `Didn't hear a clear clap (only ${snrDb.toFixed(0)} dB above background). Try again, louder.`);
+    say("I didn't hear a clear clap. Try again.");
     return;
   }
   // Onset: first block within 30 ms before the loudest that reaches half its level.
@@ -386,9 +428,11 @@ $('btn-clap').onclick = async () => {
   const shown = frames.filter((f) => f.t >= tAudio - 300 && f.t <= tAudio + 150);
   if (!shown.length) {
     setStatus('clap-status', 'The clap was outside the recorded frames. Try again.');
+    say('The clap was too late. Try again.');
     return;
   }
   setStatus('clap-status', 'Tap the first picture where your hands touch.');
+  say('Got it. Come back and pick the picture.');
   for (const f of shown) {
     const b = document.createElement('button');
     b.append(f.canvas);
