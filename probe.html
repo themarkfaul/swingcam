@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1512" />
+    <title>SwingCam phone check</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>SwingCam · phone check (M0)</h1>
+        <p class="muted">Run this on the camera phone in Safari. It measures what this iPhone can do, then gives you a report to send back.</p>
+      </header>
+
+      <div id="banner" class="banner" hidden>
+        <span id="banner-text"></span>
+        <button id="btn-restart" class="small">Restart camera</button>
+      </div>
+
+      <section class="card" id="start-card">
+        <h2>1 · Start</h2>
+        <p>Tap Start and allow <b>camera</b> and <b>microphone</b>.</p>
+        <button id="btn-start" class="primary">Start</button>
+        <p id="start-status" class="status"></p>
+      </section>
+
+      <section class="card" id="preview-card" hidden>
+        <div class="preview-wrap">
+          <video id="preview" playsinline muted autoplay></video>
+          <div id="fps-badge" class="badge">– fps</div>
+        </div>
+        <div class="row">
+          <label>Lens <select id="sel-lens"></select></label>
+          <label>Mode
+            <select id="sel-res">
+              <option value="720p60">1280×720 @ 60</option>
+              <option value="1080p60">1920×1080 @ 60</option>
+            </select>
+          </label>
+        </div>
+        <p id="preview-info" class="status"></p>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>2 · Automatic checks</h2>
+        <p>Keep the phone still, pointed at something. Takes about a minute. The preview will switch lenses on its own.</p>
+        <button id="btn-auto" class="primary">Run automatic checks</button>
+        <p id="auto-status" class="status"></p>
+        <div id="clip-box" hidden>
+          <h3>Test clip (last 3.5 s of the encoder test)</h3>
+          <video id="clip" playsinline controls muted></video>
+          <p>Did it play, and look smooth?</p>
+          <div class="row">
+            <button class="small answer" data-q="clipPlayback" data-a="smooth">Yes, smooth</button>
+            <button class="small answer" data-q="clipPlayback" data-a="choppy">Played but choppy</button>
+            <button class="small answer" data-q="clipPlayback" data-a="failed">Didn't play</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>3 · Microphone level</h2>
+        <div class="meter"><div id="meter-bar"></div><div id="meter-hold"></div></div>
+        <p class="status"><span id="meter-db">–</span> dBFS now · peak <span id="meter-peak">–</span> dBFS <button id="btn-peak-reset" class="small">Reset</button></p>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>4 · Clap test (audio lag)</h2>
+        <p>Stand about 2 m in front of the camera with your hands in view. Tap the button, wait for <b>CLAP</b>, then clap once, sharply. Then tap the <b>first picture where your hands touch</b>. Do it 3 times.</p>
+        <button id="btn-clap" class="primary">Start clap test</button>
+        <p id="clap-status" class="status big"></p>
+        <div id="clap-frames" class="frames"></div>
+        <p id="clap-results" class="status"></p>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>5 · Screen-awake test</h2>
+        <p>First set <b>Settings → Display &amp; Brightness → Auto-Lock</b> to <b>30 seconds</b>. Then tap Start and don't touch the phone for 2 minutes.</p>
+        <button id="btn-wake" class="primary">Start screen-awake test</button>
+        <p id="wake-status" class="status big"></p>
+        <div id="wake-answer" class="row" hidden>
+          <button class="small answer" data-q="wakeLock" data-a="stayed-on">Screen stayed on</button>
+          <button class="small answer" data-q="wakeLock" data-a="turned-off">Screen turned off</button>
+        </div>
+        <p class="muted">Afterwards you can set Auto-Lock back.</p>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>6 · Record a range sample</h2>
+        <p>At the range: set the phone where it will sit for real and record a few minutes of your swings, including other golfers nearby. These become test files for the swing detector. Up to 10 minutes per recording.</p>
+        <button id="btn-rec" class="primary">Start recording</button>
+        <button id="btn-rec-save" hidden>Save recording</button>
+        <p id="rec-status" class="status"></p>
+      </section>
+
+      <section class="card needs-start" hidden>
+        <h2>7 · Send the report</h2>
+        <p>Share it to yourself (Mail or Notes), then paste it to Claude.</p>
+        <div class="row">
+          <button id="btn-share" class="primary">Share report</button>
+          <button id="btn-copy">Copy</button>
+          <button id="btn-download">Download</button>
+        </div>
+        <p id="report-status" class="status"></p>
+        <ul id="summary" class="summary"></ul>
+      </section>
+
+      <details class="card">
+        <summary>Debug log</summary>
+        <pre id="debug-log" class="log"></pre>
+      </details>
+    </main>
+    <script type="module" src="./src/probe/probe.js"></script>
+  </body>
+</html>

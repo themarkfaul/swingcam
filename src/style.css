@@ -1,0 +1,272 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1512;
+  --card: #18211c;
+  --line: #2a3a31;
+  --text: #e9f0eb;
+  --muted: #9bb0a2;
+  --accent: #4cc27a;
+  --warn: #e8b64a;
+  --bad: #ec6a5e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px 48px;
+}
+
+h1 {
+  font-size: 1.35rem;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 8px;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 16px 0 8px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: #25332b;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06140b;
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+
+button.small {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+button.selected {
+  outline: 3px solid var(--accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+}
+
+select {
+  font: inherit;
+  color: var(--text);
+  background: #25332b;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  max-width: 100%;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex: 1 1 140px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.status {
+  color: var(--muted);
+  min-height: 1.2em;
+  overflow-wrap: anywhere;
+}
+
+.status.big {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--warn);
+  color: #1d1604;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.preview-wrap {
+  position: relative;
+}
+
+video {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  position: relative;
+  height: 22px;
+  background: #0b100d;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+#meter-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--warn) 80%, var(--bad));
+}
+
+#meter-hold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  left: 0;
+  background: var(--text);
+}
+
+.frames {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.frames button {
+  padding: 2px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.frames canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.summary {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.summary li {
+  padding: 6px 0 6px 26px;
+  border-top: 1px solid var(--line);
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+.summary li::before {
+  position: absolute;
+  left: 2px;
+  font-weight: 800;
+}
+
+.summary li.ok::before {
+  content: '✓';
+  color: var(--accent);
+}
+
+.summary li.warn::before {
+  content: '!';
+  color: var(--warn);
+}
+
+.summary li.bad::before {
+  content: '✗';
+  color: var(--bad);
+}
+
+.summary li.info::before {
+  content: '·';
+  color: var(--muted);
+}
+
+.log {
+  max-height: 300px;
+  overflow: auto;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+summary {
+  font-weight: 600;
+  cursor: pointer;
+}

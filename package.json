@@ -1,0 +1,19 @@
+{
+  "name": "swingcam",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "mediabunny": "^1.61.0"
+  }
+}
