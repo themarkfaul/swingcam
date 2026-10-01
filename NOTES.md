@@ -48,6 +48,11 @@ JPEG fallback (59.7 fps at 640×360, 40 KB per frame, about 9 MB for 4 s) works 
   or `autoGainControl` constraints at all (reported as not supported), so we can't confirm
   whether automatic gain is on. The range recordings will show whether impact peaks get
   squashed.
+- **`speechSynthesis` is silent while the mic is capturing.** Web Audio sounds (oscillator
+  beeps, decoded WAV clips) still play. Spoken prompts must be audio files.
+- **The audio clock stops while the context is suspended or interrupted**, but
+  `performance.now()` keeps going. Any audio-to-page clock mapping has to be re-measured after
+  every audio pause, or sounds get stamped too early. This broke the first clap test.
 - Audio lag: **not measured yet** (no clap trials in the report). This moves into M1, because it
   has to be measured on the worker pipeline the app will actually use.
 
