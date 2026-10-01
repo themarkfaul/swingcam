@@ -54,13 +54,22 @@ export async function createLevelMonitor(ctx, track) {
   setTrack(track);
 
   // Offset between the audio clock and performance.now(). Message delivery
-  // only ever adds delay, so the smallest offset seen is the most accurate.
-  let clockOffsetMs = Infinity;
+  // only ever adds delay, so the smallest recent offset is the most accurate.
+  // "Recent" matters: the audio clock stops while iOS suspends or interrupts
+  // the context, so the offset jumps every time audio resumes.
+  const OFFSET_WINDOW = 48; // ≈ 1 s of messages
+  const recentOffsets = [];
+  let clockOffsetMs = 0;
   const listeners = new Set();
 
+  ctx.addEventListener('statechange', () => {
+    recentOffsets.length = 0;
+  });
+
   node.port.onmessage = ({ data }) => {
-    const offset = performance.now() - ctx.currentTime * 1000;
-    if (offset < clockOffsetMs) clockOffsetMs = offset;
+    recentOffsets.push(performance.now() - ctx.currentTime * 1000);
+    if (recentOffsets.length > OFFSET_WINDOW) recentOffsets.shift();
+    clockOffsetMs = Math.min(...recentOffsets);
     const sr = ctx.sampleRate;
     for (let i = 0; i < data.peaks.length; i++) {
       const frame = data.startFrame + i * data.blockSize;
@@ -75,8 +84,8 @@ export async function createLevelMonitor(ctx, track) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
-    resetClock() {
-      clockOffsetMs = Infinity;
+    get clockOffsetMs() {
+      return clockOffsetMs;
     },
   };
 }
