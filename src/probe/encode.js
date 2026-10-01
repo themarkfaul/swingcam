@@ -1,5 +1,5 @@
-import { Output, Mp4OutputFormat, BufferTarget, EncodedVideoPacketSource, EncodedPacket } from 'mediabunny';
-import { pickFrameTime } from './cameras.js';
+﻿import { Output, Mp4OutputFormat, BufferTarget, EncodedVideoPacketSource, EncodedPacket } from 'mediabunny';
+import { pickFrameTime } from '../shared/cameras.js';
 
 const KEYFRAME_INTERVAL_MS = 500;
 const MAX_QUEUE = 3; // skip frames rather than let the encoder fall behind

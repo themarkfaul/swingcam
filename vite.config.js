@@ -9,8 +9,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
+        camera: resolve(import.meta.dirname, 'camera.html'),
         probe: resolve(import.meta.dirname, 'probe.html'),
       },
     },
   },
+  // Module workers, so the encoder worker can import Mediabunny.
+  worker: { format: 'es' },
 });

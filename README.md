@@ -21,5 +21,17 @@ Pushing to the `main` branch on GitHub publishes the site automatically (about a
 
 ## Pages
 
-- `index.html`: home page (becomes the Camera / Viewer picker in M1–M2)
+- `index.html`: home page (Camera / Viewer picker)
+- `camera.html`: Camera mode (M1). Also has a video-file test mode for the PC.
 - `probe.html`: M0 phone check
+
+## Code map
+
+| Folder | What's there |
+| --- | --- |
+| `src/audio/` | The impact detector (plain code, tested in `test/`), its AudioWorklet wrapper, and the mic listener |
+| `src/camera/` | Camera page, encoder worker, ring buffer, clap calibration |
+| `src/media/` | MP4 muxing (Mediabunny) |
+| `src/shared/` | Clock, settings, wake lock, voice prompts, debug log, file saving |
+| `src/probe/` | M0 phone check |
+| `test/` | Detector, ring buffer and clock tests. Real range recordings go in `test/fixtures/` |

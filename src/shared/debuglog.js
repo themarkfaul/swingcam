@@ -31,7 +31,8 @@ export function log(level, ...args) {
   if (lines.length > MAX_LINES) lines.shift();
   if (panel && !renderQueued) {
     renderQueued = true;
-    requestAnimationFrame(render);
+    // A timer, not requestAnimationFrame: rAF pauses whenever the page isn't painted.
+    setTimeout(render, 100);
   }
 }
 

@@ -70,6 +70,40 @@ JPEG fallback (59.7 fps at 640×360, 40 KB per frame, about 9 MB for 4 s) works 
   5 MB Blob saved to and read back from IndexedDB in 31 ms.
 - MediaRecorder: `video/mp4;codecs=avc1,mp4a.40.2`.
 
+## M1: camera alone
+
+### Design
+
+- Camera track → cloned and transferred to a worker → `MediaStreamTrackProcessor` →
+  `VideoEncoder` (H.264 High 3.2, keyframe every 0.5 s, 6 Mbps) → ring buffer of encoded chunks
+  (pre + post + 1.5 s). The `<video>` element only shows the preview.
+- Mic → AudioWorklet running the impact detector (`src/audio/detector.js`) on every
+  128-sample block.
+- All times are on one clock, `performance.timeOrigin + performance.now()`, which is the same in
+  the page and in workers. Audio-clock and frame timestamps are mapped onto it with the
+  minimum offset over the last second (see `ClockMapper`).
+- On a trigger: impact time = trigger time − audio lag setting. The clip is cut 0.4 s after its
+  end time, from the keyframe before (impact − pre), and muxed to MP4 in the worker.
+
+### Checked on the PC (Chromium, video-file test mode, synthetic recording)
+
+- End to end: impacts at 3, 7 and 12 s saved as swings 1–3; the one at 8 s was ignored (within
+  3 s); a voice-like hum was ignored ("slow rise"). Clips were ready about 1.9 s after impact.
+- **Bug found and fixed:** after digital silence (mic starting, iOS resuming audio), the
+  background estimate started at −120 dB and rose only slowly, so the room noise itself
+  triggered, and real impacts were then ignored for 3 s. Now the background jumps to the new
+  level after silence, follows quickly for 0.5 s, and nothing triggers during that time.
+- In this browser's file playback, the flash in the video was 42–50 ms before the marked
+  impact, steady across clips. That steadiness is what the audio-lag calibration relies on.
+- Low-bitrate Opus audio (MediaRecorder's default) blunted the synthetic impacts by about 25 dB.
+  Recordings used for tuning should keep good audio quality (the iPhone's AAC is fine).
+- `requestAnimationFrame` doesn't run while a page isn't painted; anything that must keep running
+  uses timers or workers instead.
+
+### On the iPhone
+
+_Not run yet._
+
 ## Checked on the PC
 
 WebCodecs H.264 with a keyframe every 0.5 s, cutting from the keyframe before the start point,

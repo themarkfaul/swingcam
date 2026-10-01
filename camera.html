@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1512" />
+    <title>SwingCam camera</title>
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <h1>SwingCam · Camera</h1>
+        <div class="pills">
+          <span id="pill-state" class="pill">Not started</span>
+          <span id="pill-clips" class="pill">0 swings</span>
+          <span id="pill-fps" class="pill">– fps</span>
+          <span id="pill-buffer" class="pill">buffer –</span>
+        </div>
+      </header>
+
+      <div id="banner" class="banner" hidden>
+        <span id="banner-text"></span>
+        <button id="banner-btn" class="small" hidden></button>
+      </div>
+
+      <section class="card" id="start-card">
+        <p>Put the phone on the tripod, then tap Start and allow <b>camera</b> and <b>microphone</b>.</p>
+        <button id="btn-start" class="primary">Start camera</button>
+        <p id="start-status" class="status"></p>
+        <details class="file-mode">
+          <summary>Test with a video file instead (for the PC)</summary>
+          <p class="muted">Plays a recording, with its sound, through the same detector and buffer as the live camera.</p>
+          <input id="file-input" type="file" accept="video/*" />
+        </details>
+      </section>
+
+      <div id="main" hidden>
+        <section class="card">
+          <div id="preview-wrap" class="preview-wrap">
+            <video id="preview" playsinline muted autoplay></video>
+            <svg class="framing" viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              <g fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 1.5">
+                <circle cx="30" cy="16" r="5" />
+                <path d="M30 21 L30 55 M22 27 L38 27 M24 27 L28 46 L33 52 M36 27 L33 46 L33 52 M33 52 L41 90 M27 55 L21 90 M33 55 L39 90 M30 55 L27 55 L33 55" />
+              </g>
+              <line x1="4" y1="92" x2="56" y2="92" stroke="currentColor" stroke-width="0.6" />
+              <circle cx="43" cy="90.5" r="1.4" fill="currentColor" />
+            </svg>
+            <div id="lens-warning" class="badge warn-badge" hidden>Lens looks blocked</div>
+          </div>
+          <div id="lens-buttons" class="row"></div>
+          <p id="source-info" class="status"></p>
+        </section>
+
+        <button id="btn-arm" class="arm">Arm</button>
+
+        <section class="card">
+          <div class="meter">
+            <div id="meter-bar"></div>
+            <div id="meter-bg" class="meter-mark bg-mark"></div>
+            <div id="meter-trigger" class="meter-mark trigger-mark"></div>
+          </div>
+          <p class="status small-text">Treble level <b id="lvl-now">–</b> dB · background <b id="lvl-bg">–</b> dB · triggers above <b id="lvl-trig">–</b> dB</p>
+          <label>Sensitivity <span id="sens-label" class="muted"></span>
+            <input id="sl-sens" type="range" min="8" max="40" step="1" />
+          </label>
+          <p id="last-trigger" class="status"></p>
+        </section>
+
+        <section class="card">
+          <h2>Swings</h2>
+          <div id="player-box" hidden>
+            <video id="player" playsinline muted controls></video>
+            <div class="timeline"><div id="tl-impact" class="tl-impact"></div><div id="tl-head" class="tl-head"></div></div>
+            <p id="player-info" class="status"></p>
+            <div class="row">
+              <button class="small speed" data-rate="1">1×</button>
+              <button class="small speed" data-rate="0.5">0.5×</button>
+              <button class="small speed" data-rate="0.25">0.25×</button>
+              <button id="btn-impact" class="small">Go to impact</button>
+              <button id="btn-save-clip" class="small">Save</button>
+              <button id="btn-delete-clip" class="small">Delete</button>
+            </div>
+            <p class="muted small-text">Playing clips on this phone can pause the microphone for a moment. In M2 they'll play on your own phone instead.</p>
+          </div>
+          <ul id="clip-list" class="clip-list"></ul>
+          <p id="no-clips" class="muted">No swings yet. Tap Arm, then hit a ball.</p>
+        </section>
+
+        <details class="card">
+          <summary>Settings</summary>
+          <label>Seconds before impact <b id="v-pre"></b><input id="sl-pre" type="range" min="1" max="4" step="0.5" /></label>
+          <label>Seconds after impact <b id="v-post"></b><input id="sl-post" type="range" min="0.5" max="3" step="0.25" /></label>
+          <label>Audio lag <b id="v-av"></b> <span class="muted">(measure it below)</span><input id="sl-av" type="range" min="-200" max="300" step="5" /></label>
+          <label>Ignore new sounds for <b id="v-refr"></b><input id="sl-refr" type="range" min="1" max="6" step="0.5" /></label>
+          <label class="check"><input id="cb-beep" type="checkbox" /> Beep when a swing is saved</label>
+          <details>
+            <summary class="muted">Detector fine-tuning</summary>
+            <label>Ignore sounds quieter than <b id="v-min"></b><input id="sl-min" type="range" min="-80" max="-10" step="1" /></label>
+            <label>How sudden (rise) <b id="v-rise"></b><input id="sl-rise" type="range" min="4" max="30" step="1" /></label>
+            <label>How sharp (treble share) <b id="v-hf"></b><input id="sl-hf" type="range" min="0" max="0.6" step="0.02" /></label>
+            <button id="btn-reset-settings" class="small">Reset all settings</button>
+          </details>
+        </details>
+
+        <details class="card" id="calib-card">
+          <summary>Measure audio lag (clap test)</summary>
+          <p>Tap Start, walk about 2 m in front of the camera with your hands in view. The phone counts <b>5, 4, 3, 2, 1</b> out loud, then beeps. Clap once, sharply, after the beep. Then come back and tap the <b>first picture where your hands touch</b>. Three times is best.</p>
+          <button id="btn-calib" class="primary">Start clap test</button>
+          <p id="calib-status" class="status big"></p>
+          <div id="calib-frames" class="frames"></div>
+          <p id="calib-results" class="status"></p>
+          <button id="btn-calib-use" hidden>Use this lag</button>
+        </details>
+
+        <details class="card">
+          <summary>Sound log (<span id="log-count">0</span>)</summary>
+          <p class="muted small-text">Every sound loud enough to count, and what happened to it. "Ignored" ones show why.</p>
+          <div class="table-wrap">
+            <table class="log-table">
+              <thead><tr><th>Time</th><th>Result</th><th>Level</th><th>Over bg</th><th>Rise</th><th>Treble</th></tr></thead>
+              <tbody id="log-body"></tbody>
+            </table>
+          </div>
+          <button id="btn-share-log" class="small">Share log</button>
+        </details>
+      </div>
+
+      <details class="card">
+        <summary>Debug log</summary>
+        <pre id="debug-log" class="log"></pre>
+      </details>
+    </main>
+    <script type="module" src="./src/camera/camera.js"></script>
+  </body>
+</html>

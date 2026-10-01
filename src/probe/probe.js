@@ -1,7 +1,7 @@
-import '../style.css';
+﻿import '../style.css';
 import { installDebugLog, getLogLines, log } from '../shared/debuglog.js';
 import { createWakeLock } from '../shared/wakelock.js';
-import { RESOLUTIONS, listCameras, isBackCamera, openCamera, stopStream, measureFps, pickFrameTime } from './cameras.js';
+import { RESOLUTIONS, listCameras, isBackCamera, openCamera, stopStream, measureFps, pickFrameTime } from '../shared/cameras.js';
 import { checkCodecSupport, runEncodeTest, muxClip, runJpegTest } from './encode.js';
 import { runWorkerTest } from './worker-test.js';
 import { AUDIO_CONSTRAINTS, describeAudio, createLevelMonitor, toDb } from './audio.js';
@@ -73,7 +73,7 @@ $('btn-start').onclick = async () => {
   ctx.resume().catch(() => {});
   ctx.onstatechange = () => log('info', `audio context ${ctx.state}`);
   $('btn-start').disabled = true;
-  setStatus('start-status', 'Asking for camera and microphone…');
+  setStatus('start-status', 'Asking for camera and microphoneâ€¦');
 
   try {
     const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: AUDIO_CONSTRAINTS });
@@ -83,7 +83,7 @@ $('btn-start').onclick = async () => {
     report.permissions = { granted: true };
   } catch (e) {
     report.permissions = { granted: false, error: `${e.name}: ${e.message}` };
-    setStatus('start-status', `Couldn't get camera/mic: ${e.name}. Check Safari's website settings (aA button → Website Settings) and reload.`);
+    setStatus('start-status', `Couldn't get camera/mic: ${e.name}. Check Safari's website settings (aA button â†’ Website Settings) and reload.`);
     $('btn-start').disabled = false;
     renderSummary();
     return;
@@ -131,7 +131,7 @@ async function startPreview() {
   const track = state.videoStream.getVideoTracks()[0];
   watchTrack(track, 'camera');
   const s = track.getSettings();
-  setStatus('preview-info', `${track.label}: ${s.width}×${s.height}, Safari reports ${s.frameRate ?? '?'} fps`);
+  setStatus('preview-info', `${track.label}: ${s.width}Ã—${s.height}, Safari reports ${s.frameRate ?? '?'} fps`);
 }
 
 $('sel-lens').onchange = async (e) => {
@@ -300,13 +300,13 @@ $('btn-auto').onclick = async () => {
   setBusy(true);
   const steps = [
     ['Storage', async () => (report.storage = await checkStorage())],
-    ['Cameras and frame rates', () => runCameraSweep((what) => setStatus('auto-status', `Cameras: ${what}…`))],
+    ['Cameras and frame rates', () => runCameraSweep((what) => setStatus('auto-status', `Cameras: ${what}â€¦`))],
     ['Video encoder (6 s)', runEncodeAndClip],
     ['Frames in a worker', async () => (report.worker = await runWorkerTest(state.videoStream.getVideoTracks()[0]))],
     ['JPEG fallback (3 s)', async () => (report.jpeg = await runJpegTest(video, 3))],
   ];
   for (const [name, fn] of steps) {
-    setStatus('auto-status', `${name}…`);
+    setStatus('auto-status', `${name}â€¦`);
     try {
       await fn();
       delete report.errors[name];
@@ -388,7 +388,7 @@ function beep(freq, ms) {
 // silent for the first seconds (time to walk out), then "5, 4, 3, 2, 1", then a beep.
 async function audibleCountdown() {
   for (let s = COUNTDOWN_S; s >= 1; s--) {
-    setStatus('clap-status', s > SPOKEN_FROM ? `Walk out… ${s}` : `${s}`);
+    setStatus('clap-status', s > SPOKEN_FROM ? `Walk outâ€¦ ${s}` : `${s}`);
     if (s <= SPOKEN_FROM && !say(String(s))) beep(660, 100);
     await sleep(1000);
   }
@@ -484,7 +484,7 @@ $('btn-clap').onclick = async () => {
 function showClapResults() {
   const lags = report.clapTests.map((c) => c.lagMs);
   const avg = lags.reduce((a, b) => a + b, 0) / lags.length;
-  setStatus('clap-results', `Trials: ${lags.join(', ')} ms · average ${avg.toFixed(0)} ms${lags.length < 3 ? ` · ${3 - lags.length} more to go` : ''}`);
+  setStatus('clap-results', `Trials: ${lags.join(', ')} ms Â· average ${avg.toFixed(0)} ms${lags.length < 3 ? ` Â· ${3 - lags.length} more to go` : ''}`);
 }
 
 // ---------- wake lock test ----------
@@ -511,7 +511,7 @@ $('btn-wake').onclick = async () => {
   wakeTimer = setInterval(() => {
     const s = Math.floor((performance.now() - wakeStart) / 1000);
     const lockText = report.wakeLock.acquired ? (wake.held ? 'lock held' : 'lock lost') : 'lock failed';
-    setStatus('wake-status', s >= 120 ? `2 minutes done (${lockText}). Did it stay on?` : `${s}s / 120s · ${lockText}`);
+    setStatus('wake-status', s >= 120 ? `2 minutes done (${lockText}). Did it stay on?` : `${s}s / 120s Â· ${lockText}`);
   }, 500);
   renderSummary();
 };
@@ -547,7 +547,7 @@ $('btn-rec').onclick = async () => {
     const rec = startRecording(new MediaStream(tracks), {
       maxMs: 10 * 60_000,
       onTick: (ms, bytes) => {
-        setStatus('rec-status', `Recording ${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')} · ${(bytes / 1e6).toFixed(0)} MB`);
+        setStatus('rec-status', `Recording ${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')} Â· ${(bytes / 1e6).toFixed(0)} MB`);
         if (ms >= 10 * 60_000 && state.recording) $('btn-rec').click();
       },
     });
@@ -628,11 +628,11 @@ function summarize() {
   const enc = report.encode;
   if (enc && !enc.skipped) {
     const good = !enc.errors.length && enc.encodedFps >= 55 && enc.dropped <= enc.framesIn * 0.02;
-    add(good ? 'ok' : enc.errors.length ? 'bad' : 'warn', `Encoded ${enc.framesIn} frames at ${enc.encodedFps} fps, ${enc.dropped} skipped, ${enc.mbps} Mbps, ${enc.avgEncodeMs} ms avg per frame${enc.errors.length ? ` · errors: ${enc.errors.join('; ')}` : ''}`);
+    add(good ? 'ok' : enc.errors.length ? 'bad' : 'warn', `Encoded ${enc.framesIn} frames at ${enc.encodedFps} fps, ${enc.dropped} skipped, ${enc.mbps} Mbps, ${enc.avgEncodeMs} ms avg per frame${enc.errors.length ? ` Â· errors: ${enc.errors.join('; ')}` : ''}`);
   }
   if (report.clip) {
     const c = report.clip;
-    add(c.playerError ? 'bad' : 'ok', `Clip: ${c.seconds}s, ${c.frames} frames, ${c.sizeMB} MB${c.playerError ? ` · won't play: ${c.playerError}` : c.playerDuration ? ` · plays (${c.playerSize})` : ''}`);
+    add(c.playerError ? 'bad' : 'ok', `Clip: ${c.seconds}s, ${c.frames} frames, ${c.sizeMB} MB${c.playerError ? ` Â· won't play: ${c.playerError}` : c.playerDuration ? ` Â· plays (${c.playerSize})` : ''}`);
   }
   if (report.answers.clipPlayback) add(report.answers.clipPlayback === 'smooth' ? 'ok' : 'bad', `You said the clip: ${report.answers.clipPlayback}`);
 
@@ -640,12 +640,12 @@ function summarize() {
     const r = report.worker.workerRead;
     add(r?.fps ? 'ok' : 'info', `Frames in a worker: ${r?.fps ? `${r.fps} fps` : r?.error || r?.skipped || 'no'}`);
   }
-  if (report.jpeg) add('info', `JPEG fallback: ${report.jpeg.fps} fps at ${report.jpeg.size}, ${report.jpeg.avgKB} KB each → ${report.jpeg.bufferMBFor4s} MB for 4 s`);
+  if (report.jpeg) add('info', `JPEG fallback: ${report.jpeg.fps} fps at ${report.jpeg.size}, ${report.jpeg.avgKB} KB each â†’ ${report.jpeg.bufferMBFor4s} MB for 4 s`);
 
   if (report.audio) {
     const s = report.audio.settings;
     const off = s.echoCancellation === false && s.noiseSuppression === false && s.autoGainControl === false;
-    add(off ? 'ok' : 'warn', `Mic processing ${off ? 'off' : 'not fully off'} (echo ${s.echoCancellation}, noise ${s.noiseSuppression}, gain ${s.autoGainControl}) · ${report.audio.context.sampleRate} Hz`);
+    add(off ? 'ok' : 'warn', `Mic processing ${off ? 'off' : 'not fully off'} (echo ${s.echoCancellation}, noise ${s.noiseSuppression}, gain ${s.autoGainControl}) Â· ${report.audio.context.sampleRate} Hz`);
   }
   if (report.clapTests.length) {
     const lags = report.clapTests.map((c) => c.lagMs);
@@ -655,13 +655,13 @@ function summarize() {
   if (report.wakeLock) {
     const w = report.wakeLock;
     const ans = report.answers.wakeLock;
-    add(ans === 'stayed-on' ? 'ok' : ans === 'turned-off' || !w.acquired ? 'bad' : 'warn', `Wake lock: ${w.acquired ? 'acquired' : `failed (${w.error})`}${ans ? ` · you said: ${ans}` : ' · waiting for your answer'}`);
+    add(ans === 'stayed-on' ? 'ok' : ans === 'turned-off' || !w.acquired ? 'bad' : 'warn', `Wake lock: ${w.acquired ? 'acquired' : `failed (${w.error})`}${ans ? ` Â· you said: ${ans}` : ' Â· waiting for your answer'}`);
   }
 
   add(e.features.batteryApi ? 'ok' : 'info', e.features.batteryApi ? 'Battery level available' : 'Battery level not available in Safari (expected)');
   if (report.storage) {
     const idb = report.storage.indexedDbBlob;
-    add(idb?.ok ? 'ok' : 'bad', `Storage: ${report.storage.quotaMB ?? '?'} MB allowed · saving a 5 MB clip ${idb?.ok ? `works (${idb.ms} ms)` : `failed: ${idb?.error}`}`);
+    add(idb?.ok ? 'ok' : 'bad', `Storage: ${report.storage.quotaMB ?? '?'} MB allowed Â· saving a 5 MB clip ${idb?.ok ? `works (${idb.ms} ms)` : `failed: ${idb?.error}`}`);
   }
   add(report.recorder.mimeType ? 'ok' : 'warn', `Range recorder format: ${report.recorder.mimeType || 'none'}`);
   for (const [step, err] of Object.entries(report.errors)) add('bad', `${step} failed: ${err}`);
