@@ -154,3 +154,34 @@ What carries over from this prototype:
 Order: finish M2–M4 first, then try ball speed and launch angle as an early native-app feature.
 Building a native app needs a Mac with Xcode. Free provisioning works, but apps must be re-installed
 every 7 days; the Apple Developer Program ($99/year) removes that and allows TestFlight.
+
+### Hardware path A (Raspberry Pi Zero 2 W + Camera Module 3, about $110)
+
+Checked 2026-10-01 against published specs, not on hardware.
+
+- **Clip recording: plan on 720p60, not 120 fps.** The Zero 2 W's H.264 encoder tops out at
+  1080p30, about the same work as 720p60, and one test measured about 19 fps at 1080p in practice.
+  1536×864 at 120 fps is about 2.5× more than it can encode, and 512 MB of RAM holds only about a
+  second of uncompressed frames. Short 120 fps bursts kept in memory are possible; continuous
+  120 fps clips are not. Check on the board that 720p60 actually holds.
+- **Launch monitor: crude at best.**
+  - For: the shutter can be set very short (about 1/10,000 s), so the ball is a sharp dot. At 2 m
+    face-on the 75° lens covers about 2.6 m and the ball is about 25 px across. A 150 mph ball
+    crosses that view in 4–5 frames at 120 fps, enough for rough ball speed and launch angle.
+  - Against: the IMX708 has a rolling shutter (rows are read out over several ms), which skews a
+    fast ball and adds error, especially to launch angle. Short shutters need bright daylight;
+    covered bays will be noisy. No spin at 120 fps, so carry is only an estimate.
+- **The proven route is PiTrac** (open source): two Pi Global Shutter cameras (about $50 each), IR
+  strobes that put several ball images into one exposure (that's how it gets spin), and two
+  Pi 4 boards. It measures ball speed, launch angles and 3-axis spin, and works with GSPro and
+  E6. About $250 for computers and cameras, well over the $80 target.
+- **Recommendation:** if launch monitoring is a nice-to-have, keep path A as a swing camera
+  (720p60) and at most experiment with rough ball speed. If it's a real goal, start from PiTrac's
+  design, or pair a SwingCam-style recorder with PiTrac instead of one device doing both. This
+  prototype's impact detector, clock mapping and lag calibration carry over either way.
+
+Sources: [PiTrac](https://github.com/Pells31/PiTrac),
+[hackster.io on PiTrac](https://www.hackster.io/news/golf-ball-tracking-with-raspberry-pi-8ed7fc3596c8),
+[Zero 2 W review](https://www.hackster.io/news/raspberry-pi-zero-2-w-review-hands-on-with-the-fastest-zero-ever-b85b155905a5),
+[Zero 2 W encoder study](https://arxiv.org/html/2507.12487v1),
+[Camera Module 3 specs](https://www.thingbits.in/products/raspberry-pi-camera-module-3).
