@@ -120,3 +120,37 @@ JPEG fallback (59.7 fps at 640×360, 40 KB per frame, about 9 MB for 4 s) works 
 
 WebCodecs H.264 with a keyframe every 0.5 s, cutting from the keyframe before the start point,
 and saving to MP4 with Mediabunny all work in Chromium on Windows.
+
+## Future direction: launch monitor (native app)
+
+Could SwingCam measure ball flight, not just record the swing? Partly, and only in the native app.
+
+**Not in the web version.** A driven ball leaves at about 65 m/s (around 150 mph). At Safari's
+60 fps it moves more than a metre between frames, so it appears in one frame at most, as a blur.
+A web page also can't set or read the shutter speed, which is what would make that blur measurable.
+
+**Native app on the same iPhone 12 Pro Max** (240 fps at 1080p, shutter speed under app control):
+the ball moves about 27 cm per frame and, with a fast shutter, shows up as a sharp dot in several
+frames after impact.
+
+| Measurement | Feasible? | How / why not |
+| --- | --- | --- |
+| Ball speed | Roughly, yes | The ball's known size (42.7 mm) sets the scale; 2–4 frames after impact give speed |
+| Launch angle (up/down) | Yes | Face-on (side) view |
+| Start direction (left/right) | Yes | Down-the-line (behind) view; not from the same view as launch angle |
+| Club speed | Roughly | Clubhead is blurrier and harder to track than the ball |
+| Spin rate / axis | No | Needs radar or cameras at thousands of fps |
+| Carry distance | Estimate only | Depends heavily on spin, so it has to assume typical spin per club; expect ±10% or worse |
+| Face angle / club path | Not realistically | |
+
+What carries over from this prototype:
+
+- The impact detector. It marks the exact moment, so only the few frames after impact need analysing.
+- The clock and lag calibration. Ball speed needs accurate frame times, and "first frame after
+  impact" needs the audio-to-video offset.
+- The range clips from M1–M4, to check how visible the ball is after impact at the usual camera
+  distance and lighting.
+
+Order: finish M2–M4 first, then try ball speed and launch angle as an early native-app feature.
+Building a native app needs a Mac with Xcode. Free provisioning works, but apps must be re-installed
+every 7 days; the Apple Developer Program ($99/year) removes that and allows TestFlight.
