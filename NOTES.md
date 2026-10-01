@@ -100,9 +100,21 @@ JPEG fallback (59.7 fps at 640×360, 40 KB per frame, about 9 MB for 4 s) works 
 - `requestAnimationFrame` doesn't run while a page isn't painted; anything that must keep running
   uses timers or workers instead.
 
-### On the iPhone
+### On the iPhone (2026-10-01, at home, portrait, claps and taps)
 
-_Not run yet._
+- **Full 60 fps through the worker**: clips had 212–238 frames for 3.5–4.0 s. (The main-thread
+  route in M0 only managed 42–57.)
+- Clips were ready **1.9 s after impact**, every time (13 swings).
+- **Audio lag measured with the clap test: +25 ms** (the mic hears things 25 ms after the camera
+  sees them; about 6 ms of that is sound travelling 2 m).
+- Quiet room: background about −78 dBFS (treble peak), claps and taps −35 to −58 dBFS, 20–40 dB
+  over background. The mic level is low; worth watching whether real impacts sit well above the
+  −60 dB "too quiet" floor.
+- **Clips came out sideways.** In portrait the preview track is 720×1280, but frames read in the
+  worker are 1280×720 and have no `rotation` property. Safari rotates only the preview. Fix: compare
+  a 32×32 snapshot of the preview with the worker frame at each rotation and write the best match
+  into the MP4 (`src/camera/orientation.js`). Native app note: handle orientation explicitly.
+- `speechSynthesis` silence and audio-clock pauses: see M0. The WAV-clip countdown works.
 
 ## Checked on the PC
 

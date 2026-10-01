@@ -4,6 +4,7 @@
 import { ChunkRing } from './ringbuffer.js';
 import { ClockMapper, wallNow } from '../shared/clock.js';
 import { muxH264 } from '../media/mux.js';
+import { SNAP, grayFromImageData } from './orientation.js';
 
 const KEYFRAME_MS = 500;
 const MAX_QUEUE = 3; // skip frames rather than let the encoder fall behind
@@ -73,11 +74,7 @@ function handleFrame(frame) {
     loggedFirstFrame = true;
     post({ type: 'info', message: `first frame ${width}x${height}, display ${frame.displayWidth}x${frame.displayHeight}, rotation ${frame.rotation ?? 'n/a'}` });
   }
-  const r = frame.rotation ?? 0;
-  if (r !== rotation) {
-    rotation = r;
-    restartBuffer(`rotation ${r}`);
-  }
+  if (snapshotIds.length) snapshot(frame, width, height);
   try {
     if (!encoding) return;
     ensureEncoder(width, height);
@@ -97,6 +94,21 @@ function handleFrame(frame) {
   } finally {
     frame.close();
   }
+}
+
+// A tiny grayscale copy of a frame, for working out its orientation (see orientation.js).
+let snapshotIds = [];
+let snapCtx = null;
+function snapshot(frame, width, height) {
+  try {
+    snapCtx ??= new OffscreenCanvas(SNAP, SNAP).getContext('2d', { willReadFrequently: true });
+    snapCtx.drawImage(frame, 0, 0, SNAP, SNAP);
+    const gray = grayFromImageData(snapCtx.getImageData(0, 0, SNAP, SNAP).data);
+    for (const id of snapshotIds) post({ type: 'snapshot', id, gray, portrait: height > width });
+  } catch (e) {
+    for (const id of snapshotIds) post({ type: 'snapshot', id, error: e.message });
+  }
+  snapshotIds = [];
 }
 
 async function readFrom(readable) {
@@ -185,6 +197,15 @@ self.onmessage = ({ data }) => {
       break;
     case 'chunks':
       sendChunks(data);
+      break;
+    case 'snapshot':
+      snapshotIds.push(data.id);
+      break;
+    case 'rotation':
+      if (data.rotation !== rotation) {
+        rotation = data.rotation;
+        restartBuffer(`rotation ${rotation}°`);
+      }
       break;
   }
 };

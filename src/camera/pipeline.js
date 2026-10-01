@@ -79,5 +79,9 @@ export function createPipeline(onMessage) {
     },
     cut: (o) => request({ cmd: 'cut', ...o }),
     chunks: (o) => request({ cmd: 'chunks', ...o }),
+    snapshot: () => request({ cmd: 'snapshot' }),
+    setRotation(rotation) {
+      worker.postMessage({ cmd: 'rotation', rotation });
+    },
   };
 }

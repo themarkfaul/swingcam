@@ -9,6 +9,7 @@ import { createVoice } from '../shared/voice.js';
 import { loadSettings, saveSettings, detectorParams, DEFAULT_SETTINGS } from '../shared/settings.js';
 import { saveFile } from '../shared/save.js';
 import { wallNow } from '../shared/clock.js';
+import { SNAP, bestRotation, grayFromImageData } from './orientation.js';
 
 const $ = (id) => document.getElementById(id);
 installDebugLog($('debug-log'));
@@ -44,6 +45,7 @@ const state = {
   levelDb: -120,
   bgDb: -120,
   stats: null,
+  rotation: null, // how the encoded frames must be turned to look like the preview
 };
 
 const wake = createWakeLock((event, err) => log('info', `wake lock ${event}`, err?.message ?? ''));
@@ -177,6 +179,7 @@ $('file-input').onchange = async (e) => {
     const track = capture ? capture.call(video).getVideoTracks()[0] : null;
     const how = await state.pipeline.attach(track, video);
     $('source-info').textContent = `File: ${file.name} · ${how}. Tap Arm to play it through the detector.`;
+    setTimeout(() => checkOrientation('file loaded'), 700);
     $('lens-buttons').hidden = true;
     video.onended = () => {
       if (state.armed) setArmed(false);
@@ -240,11 +243,40 @@ async function attachVideoTrack() {
   const s = track.getSettings();
   $('source-info').textContent = `${track.label} · ${s.width}×${s.height} at ${s.frameRate ?? '?'} fps · ${how}`;
   log('info', 'video source', $('source-info').textContent);
+  setTimeout(() => checkOrientation('camera started'), 700);
 }
 
 video.addEventListener('resize', () => {
-  if (video.videoWidth) $('preview-wrap').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  if (!video.videoWidth) return;
+  $('preview-wrap').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  setTimeout(() => checkOrientation('preview changed shape'), 500);
 });
+
+// Keeps the clips the same way up as the preview (see orientation.js).
+const snapCanvas = document.createElement('canvas');
+snapCanvas.width = snapCanvas.height = SNAP;
+const snapCtx = snapCanvas.getContext('2d', { willReadFrequently: true });
+
+async function checkOrientation(reason) {
+  if (!state.pipeline || !video.videoWidth) return;
+  const snap = await Promise.race([state.pipeline.snapshot(), sleep(2000).then(() => null)]);
+  if (!snap || snap.error) {
+    if (snap?.error) log('warn', 'orientation snapshot', snap.error);
+    return;
+  }
+  snapCtx.drawImage(video, 0, 0, SNAP, SNAP);
+  const preview = grayFromImageData(snapCtx.getImageData(0, 0, SNAP, SNAP).data);
+  const result = bestRotation(preview, snap.gray, video.videoHeight > video.videoWidth, snap.portrait);
+  if (result.rotation === state.rotation) return;
+  // Not sure, and what we have still fits the picture's shape: keep it.
+  const stillFits = state.rotation != null && Object.keys(result.scores).includes(String(state.rotation));
+  if (!result.confident && stillFits) return;
+  state.rotation = result.rotation;
+  state.pipeline.setRotation(result.rotation);
+  log('info', `video rotation ${result.rotation}° (${reason}; ${result.confident ? 'sure' : 'best guess'})`, result.scores);
+}
+
+setInterval(() => checkOrientation('regular check'), 10_000);
 
 // Warn if the picture is dark, or one side is much darker (e.g. the mount covers the lens).
 const lensCanvas = document.createElement('canvas');
