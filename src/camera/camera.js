@@ -10,6 +10,7 @@ import { loadSettings, saveSettings, detectorParams, DEFAULT_SETTINGS } from '..
 import { saveFile } from '../shared/save.js';
 import { wallNow } from '../shared/clock.js';
 import { SNAP, bestRotation, grayFromImageData } from './orientation.js';
+import { MOTION_SPAN, swingScores, looksLikeSwing } from './motion.js';
 
 const $ = (id) => document.getElementById(id);
 installDebugLog($('debug-log'));
@@ -26,10 +27,9 @@ const LENSES = [
 const VIDEO = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } };
 const SAVE_MARGIN_MS = 400; // wait this long past the clip end for frames to be encoded
 const ARM_GRACE_MS = 1000; // the tap on Arm is itself a sharp click the mic hears
-// Movement check: something must have moved in the golfer zone between
-// 1.2 s before impact (backswing) and just after it.
-const MOTION_BEFORE_MS = 1200;
-const MOTION_AFTER_MS = 150;
+// Movement check (see motion.js): wait until the follow-through is over,
+// then score the movement in the golfer zone around the impact.
+const MOTION_SETTLE_MS = 100;
 
 const settings = loadSettings();
 const state = {
@@ -390,14 +390,20 @@ async function captureSwing(ev) {
   const impactT = ev.t - settings.avOffsetMs;
   let motion = null;
   if (settings.motionCheck) {
-    await sleep(Math.max(0, impactT + MOTION_AFTER_MS - wallNow()));
-    const m = await state.pipeline.motion({ fromT: impactT - MOTION_BEFORE_MS, toT: impactT + MOTION_AFTER_MS });
-    if (m.samples >= 10) {
-      motion = +(m.peak * 100).toFixed(1);
-      if (motion < settings.minMotionPct) {
+    await sleep(Math.max(0, impactT + MOTION_SPAN[1] + MOTION_SETTLE_MS - wallNow()));
+    const { samples } = await state.pipeline.motion({ fromT: impactT + MOTION_SPAN[0], toT: impactT + MOTION_SPAN[1] });
+    const scores = swingScores(samples, impactT);
+    if (scores.samples >= 20) {
+      // Both rules are logged, whichever one decides, so they can be compared later.
+      const pct = (v) => +(v * 100).toFixed(1);
+      motion = { window: pct(scores.window), downswing: pct(scores.downswing), follow: pct(scores.follow) };
+      const min = settings.minMotionPct / 100;
+      motion.windowRule = looksLikeSwing(scores, 'window', min);
+      motion.swingRule = looksLikeSwing(scores, 'swing', min);
+      if (!(settings.motionRule === 'window' ? motion.windowRule : motion.swingRule)) {
         // Someone else's shot: let our next impact count straight away.
         state.listener.release();
-        addSound({ ...ev, motion, result: `ignored: no movement (${motion}%)` });
+        addSound({ ...ev, motion, result: 'ignored: no swing in the box' });
         return;
       }
     }
@@ -405,7 +411,7 @@ async function captureSwing(ev) {
 
   const n = ++state.swingCount;
   const entry = addSound({ ...ev, motion, result: `swing ${n}: saving…` });
-  $('last-trigger').textContent = `Swing ${n} heard at ${timeOfDay(new Date())} (${ev.levelDb} dB${motion != null ? `, movement ${motion}%` : ''})`;
+  $('last-trigger').textContent = `Swing ${n} heard at ${timeOfDay(new Date())} (${ev.levelDb} dB)`;
   const preMs = settings.preS * 1000;
   const postMs = settings.postS * 1000;
   await sleep(Math.max(0, impactT + postMs + SAVE_MARGIN_MS - wallNow()));
@@ -458,7 +464,7 @@ function renderSounds() {
   for (const s of state.sounds.slice(0, 100)) {
     const tr = document.createElement('tr');
     tr.className = s.type === 'trigger' ? 'hit' : '';
-    for (const v of [timeOfDay(s.time), s.result, s.levelDb, `+${s.snrDb}`, s.riseDb, `${Math.round(s.hfRatio * 100)}%`, s.motion != null ? `${s.motion}%` : '–']) {
+    for (const v of [timeOfDay(s.time), s.result, s.levelDb, `+${s.snrDb}`, s.riseDb, `${Math.round(s.hfRatio * 100)}%`, s.motion ? `${s.motion.window} · ${s.motion.downswing} · ${s.motion.follow}` : '–']) {
       const td = document.createElement('td');
       td.textContent = v;
       tr.append(td);
@@ -600,6 +606,7 @@ function showSettings() {
   $('sens-label').textContent = `(triggers at +${settings.thresholdDb} dB over background)`;
   $('cb-beep').checked = settings.confirmBeep;
   $('cb-motion').checked = settings.motionCheck;
+  $('sel-motion-rule').value = settings.motionRule;
   $('mv-need').textContent = settings.motionCheck ? `needs ${settings.minMotionPct}%` : 'check off';
   $('sel-view').value = settings.view;
   $('figure-behind').hidden = settings.view !== 'behind';
@@ -626,6 +633,10 @@ $('cb-beep').onchange = () => {
 $('cb-motion').onchange = () => {
   settings.motionCheck = $('cb-motion').checked;
   showSettings();
+  applySettings();
+};
+$('sel-motion-rule').onchange = () => {
+  settings.motionRule = $('sel-motion-rule').value;
   applySettings();
 };
 $('sel-view').onchange = () => {

@@ -46,3 +46,32 @@ export function peakChange(samples, fromT, toT) {
   }
   return { peak, samples: count };
 }
+
+// Windows around the impact time, in ms.
+//  - window:    the first rule, any movement from the backswing on
+//  - downswing: the fast part just before impact
+//  - follow:    the follow-through just after impact
+// A waggle, or teeing up, has some movement but no downswing-and-follow-through
+// pair, so the 'swing' rule needs both.
+export const MOTION_WINDOWS = {
+  window: [-1200, 150],
+  downswing: [-500, 0],
+  follow: [0, 600],
+};
+export const MOTION_SPAN = [-1200, 600]; // everything any rule looks at
+
+export function swingScores(samples, impactT) {
+  const scores = {};
+  for (const [name, [from, to]] of Object.entries(MOTION_WINDOWS)) {
+    scores[name] = peakChange(samples, impactT + from, impactT + to).peak;
+  }
+  scores.samples = peakChange(samples, impactT + MOTION_SPAN[0], impactT + MOTION_SPAN[1]).samples;
+  return scores;
+}
+
+// rule: 'window' (first version) or 'swing' (downswing and follow-through).
+// minChange: share of zone cells, 0–1.
+export function looksLikeSwing(scores, rule, minChange) {
+  if (rule === 'window') return scores.window >= minChange;
+  return Math.min(scores.downswing, scores.follow) >= minChange;
+}

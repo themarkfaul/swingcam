@@ -11,6 +11,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, 'index.html'),
         camera: resolve(import.meta.dirname, 'camera.html'),
         probe: resolve(import.meta.dirname, 'probe.html'),
+        motionEval: resolve(import.meta.dirname, 'tools/motion-eval.html'),
       },
     },
   },

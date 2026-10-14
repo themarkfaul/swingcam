@@ -498,3 +498,27 @@ label.check {
 .home-links a {
   text-decoration: none;
 }
+
+main.wide {
+  max-width: 900px;
+}
+
+textarea {
+  font: 0.85rem ui-monospace, monospace;
+  color: var(--text);
+  background: #0b100d;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  width: 100%;
+}
+
+input[type='number'] {
+  font: inherit;
+  color: var(--text);
+  background: #25332b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  width: 6em;
+}

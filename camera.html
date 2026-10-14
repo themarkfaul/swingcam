@@ -123,6 +123,12 @@
           <label class="check"><input id="cb-beep" type="checkbox" /> Beep when a swing is saved</label>
           <label class="check"><input id="cb-motion" type="checkbox" /> Only save when something moved in the dotted box</label>
           <label>Movement needed <b id="v-motion"></b><input id="sl-motion" type="range" min="0.5" max="10" step="0.5" /></label>
+          <label>What counts as a swing
+            <select id="sel-motion-rule">
+              <option value="swing">movement just before AND just after impact</option>
+              <option value="window">any movement in the 1.2 s before impact</option>
+            </select>
+          </label>
           <details>
             <summary class="muted">Detector fine-tuning</summary>
             <label>Ignore sounds quieter than <b id="v-min"></b><input id="sl-min" type="range" min="-80" max="-10" step="1" /></label>
@@ -147,7 +153,7 @@
           <p class="muted small-text">Every sound loud enough to count, and what happened to it. "Ignored" ones show why.</p>
           <div class="table-wrap">
             <table class="log-table">
-              <thead><tr><th>Time</th><th>Result</th><th>Level</th><th>Over bg</th><th>Rise</th><th>Treble</th><th>Move</th></tr></thead>
+              <thead><tr><th>Time</th><th>Result</th><th>Level</th><th>Over bg</th><th>Rise</th><th>Treble</th><th>Move: 1.2 s · down · after (%)</th></tr></thead>
               <tbody id="log-body"></tbody>
             </table>
           </div>

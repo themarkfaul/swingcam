@@ -225,3 +225,24 @@ Sources: [PiTrac](https://github.com/Pells31/PiTrac),
   values at the range are still unknown; the sound log now has a "Move" column for tuning.
 - **Framing outline:** default is now down the line (behind the golfer), with a face-on option.
   The user found the face-on figure confusing because they set up behind.
+
+### Movement rule: before AND after impact (2026-10-14)
+
+- Concern (from the user): a golfer waggling or teeing up while the next bay hits would pass the
+  first rule (any movement in the 1.2 s before impact), save a false swing, and start the 3 s
+  refractory period that can then block the real shot.
+- New default rule: movement just before impact (downswing, 0.5 s) **and** just after
+  (follow-through, 0.6 s). The decision waits about 0.7 s after impact, well inside the 1.9 s a
+  clip takes anyway. Every sound logs all three scores (1.2 s · down · after), so both rules can be
+  compared on any session. Settings → "What counts as a swing" switches back.
+- PC check with a test video (swing / waggle while a neighbour hits / still while a neighbour hits):
+
+  | | 1.2 s before | downswing | after | first rule at 2% | new rule at 2% |
+  | --- | --- | --- | --- | --- | --- |
+  | swing | 4.7 | 3.2 | 4.3 | saved | saved |
+  | waggle + neighbour | 3.8 | 3.7 | 0 | **saved (wrong)** | ignored |
+  | still + neighbour | 0 | 0 | 0 | ignored | ignored |
+
+- `tools/motion-eval.html` measures saved clips (swing-N.mp4) the same way and compares both rules
+  over thresholds 0.5–10%, using the session's Share log for impact times and loudness. Real range
+  clips: not tested yet.

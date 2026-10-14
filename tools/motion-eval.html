@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SwingCam movement check comparison</title>
+  </head>
+  <body>
+    <main class="wide">
+      <h1>Movement check: which rule works better?</h1>
+      <p class="muted">Measures the movement in each saved clip the same way the camera does, then compares the two rules against your swings and your neighbours'. Nothing leaves this computer.</p>
+      <section class="card">
+        <label>1 · Saved clips (swing-N.mp4)<input id="clips" type="file" accept="video/*" multiple /></label>
+        <label>2 · Sound log from the same session (paste the Share log text)<textarea id="log" rows="5" placeholder='{"settings": …, "swings": […], "sounds": […]}'></textarea></label>
+        <label>3 · Count a swing as yours when it was at least this loud (dB)<input id="own-db" type="number" value="-24" step="1" /></label>
+        <button id="run" class="primary">Compare</button>
+        <p id="status" class="status"></p>
+      </section>
+      <section class="card" id="summary-card" hidden>
+        <h2>Result</h2>
+        <div id="summary"></div>
+      </section>
+      <section class="card" id="clips-card" hidden>
+        <h2>Each clip</h2>
+        <p class="muted small-text">Movement is the share of the dotted box that changed, in %. "Yours" comes from loudness; change it if a clip says otherwise.</p>
+        <div class="table-wrap"><table class="log-table" id="clip-table"></table></div>
+      </section>
+    </main>
+    <script type="module" src="../src/tools/motion-eval.js"></script>
+  </body>
+</html>

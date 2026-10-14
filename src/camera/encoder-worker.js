@@ -231,7 +231,7 @@ self.onmessage = ({ data }) => {
       }
       break;
     case 'motion':
-      post({ type: 'motion', id: data.id, ...peakChange(motionHistory, data.fromT, data.toT) });
+      post({ type: 'motion', id: data.id, samples: motionHistory.filter((s) => s.t >= data.fromT && s.t <= data.toT) });
       break;
   }
 };

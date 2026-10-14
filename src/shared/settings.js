@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS = {
   confirmBeep: true,
   motionCheck: true, // only save when something moved in the golfer zone
   minMotionPct: 2,
+  motionRule: 'swing', // 'swing': downswing and follow-through; 'window': any movement from the backswing on
   view: 'behind', // 'behind' (down the line) or 'facing' (face on)
 };
 
