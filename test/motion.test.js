@@ -78,6 +78,23 @@ describe('swing rule', () => {
     expect(looksLikeSwing(s, 'swing', 0.02)).toBe(false);
   });
 
+  it('someone walking past while a neighbour hits: moving before the swing would start', () => {
+    const walking = () => 0.05;
+    const s = swingScores(timeline(walking), 10000);
+    expect(looksLikeSwing(s, 'window', 0.01)).toBe(true);
+    expect(looksLikeSwing(s, 'swing', 0.01)).toBe(false);
+  });
+
+  it('the camera being moved is not a swing', () => {
+    const bumped = (ms) => (ms > -1100 ? 0.4 : 0.002);
+    expect(looksLikeSwing(swingScores(timeline(bumped), 10000), 'swing', 0.01)).toBe(false);
+  });
+
+  it('a small swing (golfer far away) passes at a low threshold', () => {
+    const small = (ms) => swing(ms) / 5; // peaks of about 2.4% and 2%
+    expect(looksLikeSwing(swingScores(timeline(small), 10000), 'swing', 0.01)).toBe(true);
+  });
+
   it('counts the samples it had', () => {
     expect(swingScores(timeline(still), 10000).samples).toBeGreaterThan(100);
     expect(swingScores([], 10000).samples).toBe(0);

@@ -51,14 +51,24 @@ export function peakChange(samples, fromT, toT) {
 //  - window:    the first rule, any movement from the backswing on
 //  - downswing: the fast part just before impact
 //  - follow:    the follow-through just after impact
+//  - address:   before the takeaway, when a golfer stands still over the ball
 // A waggle, or teeing up, has some movement but no downswing-and-follow-through
-// pair, so the 'swing' rule needs both.
+// pair. Someone walking past, or shuffling, is moving before the swing would
+// have started. Range clips from 2026-10-12: in all 6 real swings the box was
+// completely still 2.0–1.3 s before impact.
 export const MOTION_WINDOWS = {
   window: [-1200, 150],
   downswing: [-500, 0],
   follow: [0, 600],
+  address: [-2200, -1500],
 };
-export const MOTION_SPAN = [-1200, 600]; // everything any rule looks at
+export const MOTION_SPAN = [-2200, 600]; // everything any rule looks at
+
+// For the 'swing' rule: at address, at most this much may move…
+export const ADDRESS_STILL = 0.015;
+// …and this much movement in the box means the camera itself moved (or someone
+// walked right in front of it), not a swing. Real swings were 2–7%.
+export const CAMERA_MOVED = 0.15;
 
 export function swingScores(samples, impactT) {
   const scores = {};
@@ -69,9 +79,13 @@ export function swingScores(samples, impactT) {
   return scores;
 }
 
-// rule: 'window' (first version) or 'swing' (downswing and follow-through).
-// minChange: share of zone cells, 0–1.
+// rule: 'window' (first version) or 'swing' (still at address, then
+// downswing and follow-through). minChange: share of zone cells, 0–1.
 export function looksLikeSwing(scores, rule, minChange) {
   if (rule === 'window') return scores.window >= minChange;
-  return Math.min(scores.downswing, scores.follow) >= minChange;
+  return (
+    Math.min(scores.downswing, scores.follow) >= minChange &&
+    scores.address <= ADDRESS_STILL &&
+    scores.window <= CAMERA_MOVED
+  );
 }

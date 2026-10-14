@@ -246,3 +246,33 @@ Sources: [PiTrac](https://github.com/Pells31/PiTrac),
 - `tools/motion-eval.html` measures saved clips (swing-N.mp4) the same way and compares both rules
   over thresholds 0.5–10%, using the session's Share log for impact times and loudness. Real range
   clips: not tested yet.
+
+### Real range clips: what actually separates our swings (2026-10-14)
+
+35 clips from the 2026-10-12 session, labelled by looking at the frames at the logged impact
+time (not by folder: the "my swings" folder had been filled from a loudness-based list).
+
+- **Real swings: #4, #7, #13, #19, #24, #34 (6). Everything else (29) was another bay.** Among
+  the 29: the user standing at address or upright (most), an empty bay (#38), the phone being set
+  up (#2, #3), someone walking past the camera (#26), the user twirling the club close to the
+  camera (#5).
+- **Loudness does not separate bays.** Real swings ranged −38 to 0 dBFS (#19 −38, #24 −36);
+  other bays −38 to −15 (#6 and #11 at −15). The −30 dB default set earlier today would have lost
+  two real swings, so it went back to −50. The earlier "−25 dB gap" conclusion was wrong: it was
+  drawn from loudness alone without looking at the video.
+- **Framing:** in this session the golfer stood at the left edge (1× lens) or small in the
+  middle (0.5× lens), mostly outside the movement box, so real swings scored only 2–7%. The
+  on-screen box (added after this session) should make them much larger.
+- In every real swing the box was **completely still 2.0–1.3 s before impact** (golfers pause at
+  address before the takeaway).
+
+| Rule | best threshold | swings kept | others rejected |
+| --- | --- | --- | --- |
+| loudness only, −30 dB | – | 4/6 | 19/29 |
+| any movement in 1.2 s before | 1.5% | 6/6 | 22/29 |
+| downswing AND follow-through | 1% | 6/6 | 24/29 |
+| **+ still at address, + camera not moving (now the default)** | **1%** | **6/6** | **28/29** |
+
+Only #5 (twirling the club in front of the camera while the next bay hit) still gets through.
+Caveat: 6 real swings is a small sample and the thresholds were chosen on the same clips.
+The next session's log records every score, so the choice can be checked on fresh data.
