@@ -185,3 +185,19 @@ Sources: [PiTrac](https://github.com/Pells31/PiTrac),
 [Zero 2 W review](https://www.hackster.io/news/raspberry-pi-zero-2-w-review-hands-on-with-the-fastest-zero-ever-b85b155905a5),
 [Zero 2 W encoder study](https://arxiv.org/html/2507.12487v1),
 [Camera Module 3 specs](https://www.thingbits.in/products/raspberry-pi-camera-module-3).
+
+## M1 at the range (2026-10-14, portrait, about 11 minutes armed)
+
+- **Rock solid mechanically:** 54 clips, every one about 60 fps (210–241 frames for 3.5–4.0 s),
+  every one saved 1.89–1.91 s after impact, no errors.
+- **Rotation detection works:** 90° in portrait (sure), 180° when the phone was turned to
+  landscape, back to 90° when turned back. Clips came out upright.
+- **Recovery from the background works by itself:** Safari hidden for 22 s, then the camera
+  unmuted, audio resumed, the wake lock came back, and swings kept saving with no tap needed.
+- **Switching lens while armed** kept working (the buffer briefly mixed both lenses).
+- **Bug: swing 1 was saved 70 ms after tapping Arm.** The tap on the screen is a sharp click the
+  mic hears through the phone's body. Fixed: sounds in the first second after arming are logged as
+  "ignored: just armed".
+- **Main problem: swings from the neighbouring bays trigger too.** 54 triggers in 11 minutes (one
+  every 12 s, several only 3–4 s apart) is far more than one golfer hits. Next: find out how much
+  quieter neighbours' impacts are, and consider confirming each trigger with movement in the frame.

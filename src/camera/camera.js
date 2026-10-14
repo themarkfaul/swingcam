@@ -25,6 +25,7 @@ const LENSES = [
 ];
 const VIDEO = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } };
 const SAVE_MARGIN_MS = 400; // wait this long past the clip end for frames to be encoded
+const ARM_GRACE_MS = 1000; // the tap on Arm is itself a sharp click the mic hears
 
 const settings = loadSettings();
 const state = {
@@ -37,6 +38,7 @@ const state = {
   fileSource: null,
   fileMode: false,
   armed: false,
+  armedAt: 0,
   calibrating: null,
   swingCount: 0,
   clips: [],
@@ -307,6 +309,7 @@ setInterval(() => {
 
 function setArmed(on) {
   state.armed = on;
+  if (on) state.armedAt = wallNow();
   state.listener.arm(on);
   state.pipeline.setEncoding(on || !!state.calibrating, keepMs());
   if (on) {
@@ -362,6 +365,7 @@ function onAudioEvent(ev) {
     state.bgDb = ev.bgDb;
   } else if (ev.type === 'trigger') {
     if (state.calibrating) state.calibrating.resolve(ev);
+    else if (state.armed && ev.t - state.armedAt < ARM_GRACE_MS) addSound({ ...ev, result: 'ignored: just armed' });
     else if (state.armed) captureSwing(ev);
   } else if (ev.type === 'reject' && !state.calibrating) {
     addSound({ ...ev, result: `ignored: ${ev.reason}` });
