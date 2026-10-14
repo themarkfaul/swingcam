@@ -106,6 +106,17 @@ describe('impact detector', () => {
     expect(['slow rise', 'not sharp']).toContain(rejects[0].reason);
   });
 
+  it('after release, an impact within the refractory period counts', () => {
+    const track = mixAt(mixAt(quiet(4), impact(0.5), 1.0), impact(0.5, { seed: 8 }), 2.0);
+    const det = new ImpactDetector(SR);
+    const triggers = [];
+    for (let off = 0; off < track.length; off += 128) {
+      if (off === Math.round(1.2 * SR / 128) * 128) det.release(); // "that wasn't us"
+      for (const e of det.process(track.subarray(off, off + 128), off)) if (e.type === 'trigger') triggers.push(e.frame / SR);
+    }
+    expect(triggers.map((t) => Math.round(t * 10) / 10)).toEqual([1.0, 2.0]);
+  });
+
   it('stays quiet while disarmed, then works once armed', () => {
     const track = mixAt(mixAt(quiet(6), impact(0.5), 1.0), impact(0.5, { seed: 8 }), 4.5);
     const det = new ImpactDetector(SR);

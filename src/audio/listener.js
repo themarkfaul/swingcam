@@ -45,5 +45,9 @@ export async function createListener(ctx, onEvent) {
     arm(armed) {
       node.port.postMessage({ type: 'arm', armed });
     },
+    // The last trigger wasn't our swing: let the next impact count right away.
+    release() {
+      node.port.postMessage({ type: 'release' });
+    },
   };
 }

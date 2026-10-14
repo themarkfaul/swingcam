@@ -38,7 +38,26 @@
         <section class="card">
           <div id="preview-wrap" class="preview-wrap">
             <video id="preview" playsinline muted autoplay></video>
-            <svg class="framing" viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <!-- Movement zone: the same box as MOTION_ZONE in src/camera/motion.js. -->
+            <svg class="zone" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <rect x="20" y="5" width="60" height="90" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
+            </svg>
+            <!-- Down the line: camera behind the golfer, looking along the target line. -->
+            <svg id="figure-behind" class="framing" viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              <g fill="none" stroke="currentColor" stroke-width="0.8" stroke-linecap="round">
+                <circle cx="35" cy="31" r="4.5" />
+                <path d="M32 35 L19 55 M19 55 L25 72 L22 90 M20 55 L27 72 L27 90 M30 38 L32 63 M32 63 L43 88" />
+              </g>
+              <g stroke="currentColor" stroke-width="0.5" stroke-dasharray="1.5 1.5" fill="none" opacity="0.8">
+                <path d="M45 86 L45 9" />
+              </g>
+              <path d="M43 13 L45 9 L47 13" fill="none" stroke="currentColor" stroke-width="0.5" />
+              <text x="47.5" y="12" font-size="3.2" fill="currentColor">target</text>
+              <line x1="4" y1="91" x2="56" y2="91" stroke="currentColor" stroke-width="0.6" />
+              <circle cx="45" cy="89.5" r="1.4" fill="currentColor" />
+            </svg>
+            <!-- Face on: camera in front of the golfer. -->
+            <svg id="figure-facing" class="framing" viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true" hidden>
               <g fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 1.5">
                 <circle cx="30" cy="16" r="5" />
                 <path d="M30 21 L30 55 M22 27 L38 27 M24 27 L28 46 L33 52 M36 27 L33 46 L33 52 M33 52 L41 90 M27 55 L21 90 M33 55 L39 90 M30 55 L27 55 L33 55" />
@@ -49,6 +68,13 @@
             <div id="lens-warning" class="badge warn-badge" hidden>Lens looks blocked</div>
           </div>
           <div id="lens-buttons" class="row"></div>
+          <label class="inline">Camera is
+            <select id="sel-view">
+              <option value="behind">behind the golfer (down the line)</option>
+              <option value="facing">facing the golfer (face on)</option>
+            </select>
+          </label>
+          <p class="muted small-text">Stand inside the dotted box. Movement there is how the camera tells your swing from the next bay's.</p>
           <p id="source-info" class="status"></p>
         </section>
 
@@ -64,6 +90,7 @@
           <label>Sensitivity <span id="sens-label" class="muted"></span>
             <input id="sl-sens" type="range" min="8" max="40" step="1" />
           </label>
+          <p class="status small-text">Movement in the box <b id="mv-now">–</b>% (<span id="mv-need"></span>). Make a practice swing: it should go well over.</p>
           <p id="last-trigger" class="status"></p>
         </section>
 
@@ -94,6 +121,8 @@
           <label>Audio lag <b id="v-av"></b> <span class="muted">(measure it below)</span><input id="sl-av" type="range" min="-200" max="300" step="5" /></label>
           <label>Ignore new sounds for <b id="v-refr"></b><input id="sl-refr" type="range" min="1" max="6" step="0.5" /></label>
           <label class="check"><input id="cb-beep" type="checkbox" /> Beep when a swing is saved</label>
+          <label class="check"><input id="cb-motion" type="checkbox" /> Only save when something moved in the dotted box</label>
+          <label>Movement needed <b id="v-motion"></b><input id="sl-motion" type="range" min="0.5" max="10" step="0.5" /></label>
           <details>
             <summary class="muted">Detector fine-tuning</summary>
             <label>Ignore sounds quieter than <b id="v-min"></b><input id="sl-min" type="range" min="-80" max="-10" step="1" /></label>
@@ -118,7 +147,7 @@
           <p class="muted small-text">Every sound loud enough to count, and what happened to it. "Ignored" ones show why.</p>
           <div class="table-wrap">
             <table class="log-table">
-              <thead><tr><th>Time</th><th>Result</th><th>Level</th><th>Over bg</th><th>Rise</th><th>Treble</th></tr></thead>
+              <thead><tr><th>Time</th><th>Result</th><th>Level</th><th>Over bg</th><th>Rise</th><th>Treble</th><th>Move</th></tr></thead>
               <tbody id="log-body"></tbody>
             </table>
           </div>

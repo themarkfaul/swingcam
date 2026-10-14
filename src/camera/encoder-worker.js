@@ -4,7 +4,8 @@
 import { ChunkRing } from './ringbuffer.js';
 import { ClockMapper, wallNow } from '../shared/clock.js';
 import { muxH264 } from '../media/mux.js';
-import { SNAP, grayFromImageData } from './orientation.js';
+import { SNAP, grayFromImageData, rotateSquare } from './orientation.js';
+import { zoneChange, peakChange } from './motion.js';
 
 const KEYFRAME_MS = 500;
 const MAX_QUEUE = 3; // skip frames rather than let the encoder fall behind
@@ -74,7 +75,7 @@ function handleFrame(frame) {
     loggedFirstFrame = true;
     post({ type: 'info', message: `first frame ${width}x${height}, display ${frame.displayWidth}x${frame.displayHeight}, rotation ${frame.rotation ?? 'n/a'}` });
   }
-  if (snapshotIds.length) snapshot(frame, width, height);
+  watchFrame(frame, width, height);
   try {
     if (!encoding) return;
     ensureEncoder(width, height);
@@ -96,19 +97,40 @@ function handleFrame(frame) {
   }
 }
 
-// A tiny grayscale copy of a frame, for working out its orientation (see orientation.js).
+// Every frame is also shrunk to a tiny grayscale picture, used for two things:
+// working out its orientation (orientation.js) and measuring movement in the
+// golfer zone (motion.js). Movement is compared with the frame two back
+// (about 33 ms), which shows a swing more clearly than the very next frame.
+const MOTION_KEEP_MS = 8000;
 let snapshotIds = [];
 let snapCtx = null;
-function snapshot(frame, width, height) {
+let recentGrays = [];
+let motionHistory = [];
+let motionWatchFailed = false;
+
+function watchFrame(frame, width, height) {
+  if (motionWatchFailed && !snapshotIds.length) return;
   try {
     snapCtx ??= new OffscreenCanvas(SNAP, SNAP).getContext('2d', { willReadFrequently: true });
     snapCtx.drawImage(frame, 0, 0, SNAP, SNAP);
     const gray = grayFromImageData(snapCtx.getImageData(0, 0, SNAP, SNAP).data);
     for (const id of snapshotIds) post({ type: 'snapshot', id, gray, portrait: height > width });
+    snapshotIds = [];
+
+    const t = clock.toWall(frame.timestamp / 1000);
+    const upright = rotation ? rotateSquare(gray, SNAP, rotation) : gray;
+    recentGrays.push(upright);
+    if (recentGrays.length > 3) recentGrays.shift();
+    if (recentGrays.length === 3) {
+      motionHistory.push({ t, change: zoneChange(recentGrays[0], upright, SNAP) });
+      while (motionHistory.length && motionHistory[0].t < t - MOTION_KEEP_MS) motionHistory.shift();
+    }
   } catch (e) {
     for (const id of snapshotIds) post({ type: 'snapshot', id, error: e.message });
+    snapshotIds = [];
+    if (!motionWatchFailed) post({ type: 'error', message: `movement check unavailable: ${e.message}` });
+    motionWatchFailed = true;
   }
-  snapshotIds = [];
 }
 
 async function readFrom(readable) {
@@ -204,8 +226,12 @@ self.onmessage = ({ data }) => {
     case 'rotation':
       if (data.rotation !== rotation) {
         rotation = data.rotation;
+        recentGrays = []; // the zone is in upright coordinates
         restartBuffer(`rotation ${rotation}°`);
       }
+      break;
+    case 'motion':
+      post({ type: 'motion', id: data.id, ...peakChange(motionHistory, data.fromT, data.toT) });
       break;
   }
 };
@@ -222,6 +248,8 @@ setInterval(() => {
     queue: encoder?.encodeQueueSize ?? 0,
     size: encoderSize,
     encoding,
+    // Peak movement in the golfer zone over the last second, for the on-screen readout.
+    motion: peakChange(motionHistory, wallNow() - 1000, wallNow()).peak,
   });
   lastCounts = { ...counts };
 }, 1000);

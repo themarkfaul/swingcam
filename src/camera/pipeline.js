@@ -80,6 +80,7 @@ export function createPipeline(onMessage) {
     cut: (o) => request({ cmd: 'cut', ...o }),
     chunks: (o) => request({ cmd: 'chunks', ...o }),
     snapshot: () => request({ cmd: 'snapshot' }),
+    motion: (o) => request({ cmd: 'motion', ...o }),
     setRotation(rotation) {
       worker.postMessage({ cmd: 'rotation', rotation });
     },

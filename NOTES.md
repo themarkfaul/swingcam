@@ -201,3 +201,27 @@ Sources: [PiTrac](https://github.com/Pells31/PiTrac),
 - **Main problem: swings from the neighbouring bays trigger too.** 54 triggers in 11 minutes (one
   every 12 s, several only 3–4 s apart) is far more than one golfer hits. Next: find out how much
   quieter neighbours' impacts are, and consider confirming each trigger with movement in the frame.
+
+### Sound log from that session: your shots vs the next bays
+
+- Sorting every loud sound by level: **the golfer's own impacts were −23 to 0 dBFS** (12 saved
+  as swings, 8 more ignored because they came 1–3 s after a neighbour's shot that had started the
+  3 s refractory period). 20 in all, close to the ~18 balls actually hit.
+- **Impacts from the bays on either side were −25 to −38 dBFS** (about 34 of the 54 saved
+  "swings"). The minimum-loudness setting was still at −60 dB, so all of them got through.
+- So at this range loudness alone separates them, with a gap around −25 dB. Sounds rejected as
+  "too quiet" don't start the refractory period, so neighbours can't block the next real shot.
+  But it depends on bay spacing and phone distance, and chips will be quieter.
+
+### Changes after the range
+
+- Minimum loudness default raised to **−30 dB** (saved settings still at the old −60 move to it).
+- **Movement check:** the worker shrinks every frame to 32×32 grayscale, turns it upright, and
+  measures the share of cells in the golfer zone (middle 60% × 90%, drawn as a dotted box) that
+  changed against the frame two back (an overall brightness shift is taken out). On a trigger, if
+  the peak in the 1.2 s before impact is below 2%, the sound is logged as "ignored: no movement"
+  and the detector's refractory period is released, so the golfer's next impact still counts.
+  PC test: a drawn "club" sweeping through the zone measured 3.3–3.7%; a static scene 0%. Real
+  values at the range are still unknown; the sound log now has a "Move" column for tuning.
+- **Framing outline:** default is now down the line (behind the golfer), with a face-on option.
+  The user found the face-on figure confusing because they set up behind.

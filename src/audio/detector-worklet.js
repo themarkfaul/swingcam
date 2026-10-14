@@ -14,6 +14,7 @@ class DetectorProcessor extends AudioWorkletProcessor {
     this.port.onmessage = ({ data }) => {
       if (data.type === 'params') this.detector.setParams(data.params);
       if (data.type === 'arm') this.detector.armed = data.armed;
+      if (data.type === 'release') this.detector.release();
     };
   }
 

@@ -80,6 +80,12 @@ export class ImpactDetector {
     this.a2 = (1 - alpha) / a0;
   }
 
+  // Ends the refractory period early: the last trigger turned out not to be
+  // our swing (nothing moved in the frame), so the next impact must count.
+  release() {
+    this.lastTriggerFrame = -Infinity;
+  }
+
   get backgroundDb() {
     return this.bg ?? FLOOR_DB;
   }

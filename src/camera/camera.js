@@ -26,6 +26,10 @@ const LENSES = [
 const VIDEO = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } };
 const SAVE_MARGIN_MS = 400; // wait this long past the clip end for frames to be encoded
 const ARM_GRACE_MS = 1000; // the tap on Arm is itself a sharp click the mic hears
+// Movement check: something must have moved in the golfer zone between
+// 1.2 s before impact (backswing) and just after it.
+const MOTION_BEFORE_MS = 1200;
+const MOTION_AFTER_MS = 150;
 
 const settings = loadSettings();
 const state = {
@@ -170,8 +174,15 @@ $('file-input').onchange = async (e) => {
     video.srcObject = null;
     video.muted = false;
     video.loop = false;
+    video.autoplay = false; // wait for Arm, so the whole file goes through the detector
+    video.preload = 'auto';
     video.src = URL.createObjectURL(file);
-    await new Promise((r) => (video.onloadeddata = r));
+    await new Promise((resolve, reject) => {
+      video.onloadeddata = resolve;
+      video.onerror = () => reject(new Error(video.error?.message || 'this browser can't play it'));
+    });
+    video.pause();
+    video.currentTime = 0;
     if (!state.fileSource) {
       state.fileSource = ctx.createMediaElementSource(video);
       state.fileSource.connect(ctx.destination); // so you can hear it
@@ -343,6 +354,9 @@ function onWorkerMessage(msg) {
     $('pill-fps').textContent = `${msg.fps} fps`;
     $('pill-fps').className = 'pill' + (msg.fps < 50 ? ' warn' : '');
     $('pill-buffer').textContent = msg.encoding ? `buffer ${msg.bufferS} s` : 'buffer off';
+    const mv = +(msg.motion * 100).toFixed(1);
+    $('mv-now').textContent = mv;
+    $('mv-now').classList.toggle('ok', mv >= settings.minMotionPct);
     const stalled = state.armed && !document.hidden && msg.fps === 0;
     stalledSince = stalled ? (stalledSince ?? wallNow()) : null;
     if (stalledSince && wallNow() - stalledSince > 3000) {
@@ -373,10 +387,25 @@ function onAudioEvent(ev) {
 }
 
 async function captureSwing(ev) {
-  const n = ++state.swingCount;
-  const entry = addSound({ ...ev, result: `swing ${n}: saving…` });
-  $('last-trigger').textContent = `Swing ${n} heard at ${timeOfDay(new Date())} (+${ev.snrDb} dB over background)`;
   const impactT = ev.t - settings.avOffsetMs;
+  let motion = null;
+  if (settings.motionCheck) {
+    await sleep(Math.max(0, impactT + MOTION_AFTER_MS - wallNow()));
+    const m = await state.pipeline.motion({ fromT: impactT - MOTION_BEFORE_MS, toT: impactT + MOTION_AFTER_MS });
+    if (m.samples >= 10) {
+      motion = +(m.peak * 100).toFixed(1);
+      if (motion < settings.minMotionPct) {
+        // Someone else's shot: let our next impact count straight away.
+        state.listener.release();
+        addSound({ ...ev, motion, result: `ignored: no movement (${motion}%)` });
+        return;
+      }
+    }
+  }
+
+  const n = ++state.swingCount;
+  const entry = addSound({ ...ev, motion, result: `swing ${n}: saving…` });
+  $('last-trigger').textContent = `Swing ${n} heard at ${timeOfDay(new Date())} (${ev.levelDb} dB${motion != null ? `, movement ${motion}%` : ''})`;
   const preMs = settings.preS * 1000;
   const postMs = settings.postS * 1000;
   await sleep(Math.max(0, impactT + postMs + SAVE_MARGIN_MS - wallNow()));
@@ -396,6 +425,8 @@ async function captureSwing(ev) {
     impactOffsetS: res.impactOffsetS,
     frames: res.frames,
     snrDb: ev.snrDb,
+    levelDb: ev.levelDb,
+    motion,
   };
   state.clips.unshift(clip);
   entry.result = `swing ${n}` + (res.missingStartMs > 100 ? ` (missing ${(res.missingStartMs / 1000).toFixed(1)} s at start)` : '');
@@ -427,7 +458,7 @@ function renderSounds() {
   for (const s of state.sounds.slice(0, 100)) {
     const tr = document.createElement('tr');
     tr.className = s.type === 'trigger' ? 'hit' : '';
-    for (const v of [timeOfDay(s.time), s.result, s.levelDb, `+${s.snrDb}`, s.riseDb, `${Math.round(s.hfRatio * 100)}%`]) {
+    for (const v of [timeOfDay(s.time), s.result, s.levelDb, `+${s.snrDb}`, s.riseDb, `${Math.round(s.hfRatio * 100)}%`, s.motion != null ? `${s.motion}%` : '–']) {
       const td = document.createElement('td');
       td.textContent = v;
       tr.append(td);
@@ -483,7 +514,7 @@ function renderClips() {
     const li = document.createElement('li');
     const b = document.createElement('button');
     b.className = 'clip-btn' + (clip === state.current ? ' selected' : '');
-    b.innerHTML = `<b>Swing ${clip.n}</b><span>${timeOfDay(clip.at)} · ${clip.durationS.toFixed(1)} s · +${clip.snrDb} dB</span>`;
+    b.innerHTML = `<b>Swing ${clip.n}</b><span>${timeOfDay(clip.at)} · ${clip.durationS.toFixed(1)} s · ${clip.levelDb} dB</span>`;
     b.onclick = () => openClip(clip);
     li.append(b);
     list.append(li);
@@ -551,6 +582,7 @@ const SLIDERS = [
   ['sl-min', 'minLevelDb', 'v-min', (v) => `${v} dB`],
   ['sl-rise', 'riseDb', 'v-rise', (v) => `${v} dB`],
   ['sl-hf', 'minHfRatio', 'v-hf', (v) => `${Math.round(v * 100)}%`],
+  ['sl-motion', 'minMotionPct', 'v-motion', (v) => `${v}%`],
 ];
 
 function applySettings() {
@@ -567,12 +599,18 @@ function showSettings() {
   $('sl-sens').value = 48 - settings.thresholdDb;
   $('sens-label').textContent = `(triggers at +${settings.thresholdDb} dB over background)`;
   $('cb-beep').checked = settings.confirmBeep;
+  $('cb-motion').checked = settings.motionCheck;
+  $('mv-need').textContent = settings.motionCheck ? `needs ${settings.minMotionPct}%` : 'check off';
+  $('sel-view').value = settings.view;
+  $('figure-behind').hidden = settings.view !== 'behind';
+  $('figure-facing').hidden = settings.view !== 'facing';
 }
 
 for (const [id, key, labelId, fmt] of SLIDERS) {
   $(id).oninput = () => {
     settings[key] = Number($(id).value);
     $(labelId).textContent = fmt(settings[key]);
+    if (key === 'minMotionPct') $('mv-need').textContent = settings.motionCheck ? `needs ${settings.minMotionPct}%` : 'check off';
     applySettings();
   };
 }
@@ -583,6 +621,16 @@ $('sl-sens').oninput = () => {
 };
 $('cb-beep').onchange = () => {
   settings.confirmBeep = $('cb-beep').checked;
+  applySettings();
+};
+$('cb-motion').onchange = () => {
+  settings.motionCheck = $('cb-motion').checked;
+  showSettings();
+  applySettings();
+};
+$('sel-view').onchange = () => {
+  settings.view = $('sel-view').value;
+  showSettings();
   applySettings();
 };
 $('btn-reset-settings').onclick = () => {
