@@ -179,7 +179,7 @@ $('file-input').onchange = async (e) => {
     video.src = URL.createObjectURL(file);
     await new Promise((resolve, reject) => {
       video.onloadeddata = resolve;
-      video.onerror = () => reject(new Error(video.error?.message || 'this browser can't play it'));
+      video.onerror = () => reject(new Error(video.error?.message || "this browser can't play it"));
     });
     video.pause();
     video.currentTime = 0;
