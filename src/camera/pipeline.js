@@ -81,6 +81,13 @@ export function createPipeline(onMessage) {
     chunks: (o) => request({ cmd: 'chunks', ...o }),
     snapshot: () => request({ cmd: 'snapshot' }),
     motion: (o) => request({ cmd: 'motion', ...o }),
+    setZone(zone) {
+      worker.postMessage({ cmd: 'zone', zone });
+    },
+    startLearning() {
+      worker.postMessage({ cmd: 'learn', on: true });
+    },
+    stopLearning: () => request({ cmd: 'learn', on: false }),
     setRotation(rotation) {
       worker.postMessage({ cmd: 'rotation', rotation });
     },

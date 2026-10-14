@@ -5,7 +5,7 @@ import { ChunkRing } from './ringbuffer.js';
 import { ClockMapper, wallNow } from '../shared/clock.js';
 import { muxH264 } from '../media/mux.js';
 import { SNAP, grayFromImageData, rotateSquare } from './orientation.js';
-import { zoneChange, peakChange } from './motion.js';
+import { MOTION_ZONE, zoneChange, peakChange, changedCells } from './motion.js';
 
 const KEYFRAME_MS = 500;
 const MAX_QUEUE = 3; // skip frames rather than let the encoder fall behind
@@ -107,6 +107,9 @@ let snapCtx = null;
 let recentGrays = [];
 let motionHistory = [];
 let motionWatchFailed = false;
+let zone = MOTION_ZONE; // replaced by the box from "Learn my swing"
+let learning = null; // frames recorded while learning: [{ t, cells }]
+const LEARN_MAX_FRAMES = 60 * 40;
 
 function watchFrame(frame, width, height) {
   if (motionWatchFailed && !snapshotIds.length) return;
@@ -122,7 +125,8 @@ function watchFrame(frame, width, height) {
     recentGrays.push(upright);
     if (recentGrays.length > 3) recentGrays.shift();
     if (recentGrays.length === 3) {
-      motionHistory.push({ t, change: zoneChange(recentGrays[0], upright, SNAP) });
+      motionHistory.push({ t, change: zoneChange(recentGrays[0], upright, SNAP, zone) });
+      if (learning && learning.length < LEARN_MAX_FRAMES) learning.push({ t, cells: changedCells(recentGrays[0], upright, SNAP) });
       while (motionHistory.length && motionHistory[0].t < t - MOTION_KEEP_MS) motionHistory.shift();
     }
   } catch (e) {
@@ -228,6 +232,19 @@ self.onmessage = ({ data }) => {
         rotation = data.rotation;
         recentGrays = []; // the zone is in upright coordinates
         restartBuffer(`rotation ${rotation}°`);
+      }
+      break;
+    case 'zone':
+      zone = data.zone ?? MOTION_ZONE;
+      motionHistory = []; // scores from the old box don't compare
+      break;
+    case 'learn':
+      if (data.on) {
+        learning = [];
+      } else {
+        const frames = learning ?? [];
+        learning = null;
+        post({ type: 'learned', id: data.id, frames }, frames.map((f) => f.cells.buffer));
       }
       break;
     case 'motion':

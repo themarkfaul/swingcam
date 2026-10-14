@@ -35,6 +35,20 @@ export function zoneChange(prev, cur, size, zone = MOTION_ZONE) {
   return changed / n;
 }
 
+// Which cells of the whole picture changed (1) or not (0), with any overall
+// brightness shift taken out. Used by "Learn my swing" to find the golfer.
+export function changedCells(prev, cur, size) {
+  let shift = 0;
+  for (let i = 0; i < cur.length; i++) shift += cur[i] - prev[i];
+  shift /= cur.length;
+  const out = new Uint8Array(size * size);
+  for (let i = 0; i < cur.length; i++) {
+    const d = cur[i] - prev[i] - shift;
+    out[i] = d > CELL_CHANGE || d < -CELL_CHANGE ? 1 : 0;
+  }
+  return out;
+}
+
 // samples: [{ t, change }]. Peak change within [fromT, toT].
 export function peakChange(samples, fromT, toT) {
   let peak = 0;
@@ -70,9 +84,12 @@ export const ADDRESS_STILL = 0.015;
 // walked right in front of it), not a swing. Real swings were 2–7%.
 export const CAMERA_MOVED = 0.15;
 
-export function swingScores(samples, impactT) {
+// learned (optional): what "Learn my swing" found; its address window fits
+// the golfer's own tempo.
+export function swingScores(samples, impactT, learned = null) {
   const scores = {};
-  for (const [name, [from, to]] of Object.entries(MOTION_WINDOWS)) {
+  const windows = learned?.addressWindow ? { ...MOTION_WINDOWS, address: learned.addressWindow } : MOTION_WINDOWS;
+  for (const [name, [from, to]] of Object.entries(windows)) {
     scores[name] = peakChange(samples, impactT + from, impactT + to).peak;
   }
   scores.samples = peakChange(samples, impactT + MOTION_SPAN[0], impactT + MOTION_SPAN[1]).samples;
@@ -81,11 +98,11 @@ export function swingScores(samples, impactT) {
 
 // rule: 'window' (first version) or 'swing' (still at address, then
 // downswing and follow-through). minChange: share of zone cells, 0–1.
-export function looksLikeSwing(scores, rule, minChange) {
+export function looksLikeSwing(scores, rule, minChange, learned = null) {
   if (rule === 'window') return scores.window >= minChange;
   return (
     Math.min(scores.downswing, scores.follow) >= minChange &&
-    scores.address <= ADDRESS_STILL &&
+    scores.address <= (learned?.addressStill ?? ADDRESS_STILL) &&
     scores.window <= CAMERA_MOVED
   );
 }

@@ -40,7 +40,7 @@
             <video id="preview" playsinline muted autoplay></video>
             <!-- Movement zone: the same box as MOTION_ZONE in src/camera/motion.js. -->
             <svg class="zone" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <rect x="20" y="5" width="60" height="90" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
+              <rect id="zone-rect" x="20" y="5" width="60" height="90" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" />
             </svg>
             <!-- Down the line: camera behind the golfer, looking along the target line. -->
             <svg id="figure-behind" class="framing" viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -76,6 +76,15 @@
           </label>
           <p class="muted small-text">Stand inside the dotted box. Movement there is how the camera tells your swing from the next bay's.</p>
           <p id="source-info" class="status"></p>
+        </section>
+
+        <section class="card" id="learn-card">
+          <h2>Learn my swing</h2>
+          <p class="muted small-text">Once per session, after setting up the phone. It talks you through it: stand still at address for 3 seconds, then make 3 practice swings. It then draws the box around you and sets how much movement counts as your swing.</p>
+          <button id="btn-learn" class="primary">Learn my swing</button>
+          <p id="learn-status" class="status big"></p>
+          <p id="learn-result" class="status"></p>
+          <button id="btn-learn-forget" class="small" hidden>Use the standard box instead</button>
         </section>
 
         <button id="btn-arm" class="arm">Arm</button>
@@ -125,7 +134,7 @@
           <label>Ignore new sounds for <b id="v-refr"></b><input id="sl-refr" type="range" min="1" max="6" step="0.5" /></label>
           <label class="check"><input id="cb-beep" type="checkbox" /> Beep when a swing is saved</label>
           <label class="check"><input id="cb-motion" type="checkbox" /> Only save when something moved in the dotted box</label>
-          <label>Movement needed <b id="v-motion"></b><input id="sl-motion" type="range" min="0.5" max="10" step="0.5" /></label>
+          <label>Movement needed <b id="v-motion"></b><input id="sl-motion" type="range" min="0.5" max="10" step="0.1" /></label>
           <label>What counts as a swing
             <select id="sel-motion-rule">
               <option value="swing">still at address, then movement just before AND just after impact</option>

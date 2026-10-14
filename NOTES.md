@@ -276,3 +276,26 @@ time (not by folder: the "my swings" folder had been filled from a loudness-base
 Only #5 (twirling the club in front of the camera while the next bay hit) still gets through.
 Caveat: 6 real swings is a small sample and the thresholds were chosen on the same clips.
 The next session's log records every score, so the choice can be checked on fresh data.
+
+### Learn my swing (2026-10-14)
+
+Each range and golfer is different, so a setup step now learns them: after a spoken countdown,
+3 s standing still at address, then 3 practice swings (6.5 s each), all prompted by voice.
+From the frames (which 32×32 cells changed, `learn.js`):
+
+- **Box:** cells that moved in at least 2 of the 3 swings, plus a 2-cell margin. Replaces the
+  fixed middle box, so a golfer at the edge of the picture is covered.
+- **Movement needed:** 30% of the smallest practice swing's peak (clamped 0.5–10%).
+- **Tempo:** takeaway to the busiest moment, found inside the box by walking back from the peak
+  while anything moves (a first version used the start of the big burst and measured 0.4 s for a
+  0.9 s backswing, because a slow takeaway hardly moves the picture). The "still at address"
+  window becomes a 0.7 s window ending 0.3 s before the takeaway.
+- **Address stillness:** twice the movement seen while standing still, plus 0.5% (1–3%).
+
+PC rehearsal (golfer drawn at the left edge, slow takeaway): learned 3 swings, box around the
+left side, backswing 1.1 s. Then a swing at the left edge was saved (12.2 · 7.8 · 12.2) and a
+golfer swinging in the middle of the picture was ignored (14.4 · 14.4 · 0: their backswing
+reached into the box, their follow-through didn't).
+
+Also added: **Save all swings** with a choice of 1×, ½× or ¼× speed. Slow-motion copies keep
+every frame and stretch the timing, no re-encoding (about 40 ms per clip on the PC).

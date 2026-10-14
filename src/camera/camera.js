@@ -11,7 +11,8 @@ import { saveFiles } from '../shared/save.js';
 import { retimeMp4 } from '../media/retime.js';
 import { wallNow } from '../shared/clock.js';
 import { SNAP, bestRotation, grayFromImageData } from './orientation.js';
-import { MOTION_SPAN, swingScores, looksLikeSwing } from './motion.js';
+import { MOTION_SPAN, MOTION_ZONE, swingScores, looksLikeSwing } from './motion.js';
+import { learnSwing } from './learn.js';
 
 const $ = (id) => document.getElementById(id);
 installDebugLog($('debug-log'));
@@ -116,6 +117,7 @@ async function initCommon(ctx) {
   state.listener = await createListener(ctx, onAudioEvent);
   state.listener.setParams(detectorParams(settings));
   state.pipeline = createPipeline(onWorkerMessage);
+  applyLearned();
 }
 
 function watchTrack(track, name) {
@@ -391,16 +393,19 @@ async function captureSwing(ev) {
   const impactT = ev.t - settings.avOffsetMs;
   let motion = null;
   if (settings.motionCheck) {
+    const learned = settings.learned;
+    const from = Math.min(MOTION_SPAN[0], learned?.addressWindow?.[0] ?? 0);
     await sleep(Math.max(0, impactT + MOTION_SPAN[1] + MOTION_SETTLE_MS - wallNow()));
-    const { samples } = await state.pipeline.motion({ fromT: impactT + MOTION_SPAN[0], toT: impactT + MOTION_SPAN[1] });
-    const scores = swingScores(samples, impactT);
+    const { samples } = await state.pipeline.motion({ fromT: impactT + from, toT: impactT + MOTION_SPAN[1] });
+    const scores = swingScores(samples, impactT, learned);
     if (scores.samples >= 20) {
       // Both rules are logged, whichever one decides, so they can be compared later.
       const pct = (v) => +(v * 100).toFixed(1);
       motion = { window: pct(scores.window), downswing: pct(scores.downswing), follow: pct(scores.follow) };
       const min = settings.minMotionPct / 100;
+      motion.address = pct(scores.address);
       motion.windowRule = looksLikeSwing(scores, 'window', min);
-      motion.swingRule = looksLikeSwing(scores, 'swing', min);
+      motion.swingRule = looksLikeSwing(scores, 'swing', min, learned);
       if (!(settings.motionRule === 'window' ? motion.windowRule : motion.swingRule)) {
         // Someone else's shot: let our next impact count straight away.
         state.listener.release();
@@ -713,6 +718,93 @@ $('btn-reset-settings').onclick = () => {
   applySettings();
 };
 showSettings();
+
+// ---------- learn my swing ----------
+
+const LEARN_STILL_MS = 3000;
+const LEARN_SWING_MS = 6500; // time for each practice swing, including the spoken prompt
+const LEARN_SWINGS = 3;
+
+function applyLearned() {
+  const learned = settings.learned;
+  const z = learned?.zone ?? MOTION_ZONE;
+  const rect = $('zone-rect');
+  rect.setAttribute('x', z.x0 * 100);
+  rect.setAttribute('y', z.y0 * 100);
+  rect.setAttribute('width', (z.x1 - z.x0) * 100);
+  rect.setAttribute('height', (z.y1 - z.y0) * 100);
+  state.pipeline?.setZone(learned?.zone ?? null);
+  $('btn-learn-forget').hidden = !learned;
+  $('learn-result').textContent = learned
+    ? `Box drawn around you (learned ${new Date(learned.at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}). Your practice swings moved ${learned.peaks.map((p) => `${Math.round(p * 100)}%`).join(', ')} of it; a swing now needs ${settings.minMotionPct}%. Backswing about ${(learned.backswingMs / 1000).toFixed(1)} s. Learn again at each new range.`
+    : 'Not learned yet: using the standard box in the middle of the picture.';
+}
+
+$('btn-learn').onclick = async () => {
+  if (state.learning || !state.pipeline) return;
+  const wasArmed = state.armed;
+  if (wasArmed) setArmed(false);
+  state.learning = true;
+  $('btn-learn').disabled = $('btn-arm').disabled = true;
+  const say = (text) => ($('learn-status').textContent = text);
+  wake.start().catch(() => {});
+  state.ctx.resume().catch(() => {});
+  try {
+    if (state.fileMode) video.play(); // the test file plays through the learning step too
+    state.voice.say('learn-start');
+    await state.voice.countdown((s) => say(s === 0 ? 'Stand still' : s > 5 ? `Walk to the ball… ${s}` : String(s)));
+    state.pipeline.startLearning();
+    state.voice.say('learn-still');
+    say('Stand still at address');
+    await sleep(LEARN_STILL_MS);
+    const stillEndT = wallNow();
+    for (let i = 1; i <= LEARN_SWINGS; i++) {
+      state.voice.say(i === 1 ? 'learn-swing' : 'learn-again');
+      say(`Practice swing ${i} of ${LEARN_SWINGS}`);
+      await sleep(LEARN_SWING_MS);
+    }
+    const { frames } = await state.pipeline.stopLearning();
+    const result = learnSwing(frames, stillEndT);
+    log('info', 'learn my swing', { ...result, frames: frames.length });
+    if (!result.ok) {
+      state.voice.say('learn-failed');
+      say(`Didn't learn your swing (${result.reason}). Make sure you're in the picture, then try again.`);
+      return;
+    }
+    settings.learned = {
+      zone: result.zone,
+      addressWindow: result.addressWindow,
+      addressStill: result.addressStill,
+      peaks: result.peaks,
+      backswingMs: result.backswingMs,
+      at: new Date().toISOString(),
+    };
+    settings.minMotionPct = Math.round(result.minMotion * 1000) / 10;
+    showSettings();
+    applySettings();
+    applyLearned();
+    state.voice.say('learn-done');
+    say(`Learned from ${result.swings} swing${result.swings === 1 ? '' : 's'}. Check the dotted box is around you.`);
+  } catch (e) {
+    log('error', 'learn my swing', e);
+    say(`Learning failed: ${e.message}`);
+  } finally {
+    state.learning = false;
+    if (state.fileMode && !wasArmed) video.pause();
+    $('btn-learn').disabled = $('btn-arm').disabled = false;
+    if (wasArmed) setArmed(true);
+    else wake.stop();
+  }
+};
+
+$('btn-learn-forget').onclick = () => {
+  settings.learned = null;
+  settings.minMotionPct = DEFAULT_SETTINGS.minMotionPct;
+  showSettings();
+  applySettings();
+  applyLearned();
+  $('learn-status').textContent = '';
+};
 
 // ---------- clap test ----------
 

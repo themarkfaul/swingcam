@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   minMotionPct: 1,
   motionRule: 'swing', // 'swing': downswing and follow-through; 'window': any movement from the backswing on
   view: 'behind', // 'behind' (down the line) or 'facing' (face on)
+  learned: null, // what "Learn my swing" found: box, address window, stillness
 };
 
 export function loadSettings() {

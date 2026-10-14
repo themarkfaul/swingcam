@@ -1,7 +1,7 @@
 // Spoken prompts and beeps. iOS silences speechSynthesis while the mic is in
 // use, so prompts are recorded WAV clips (public/sounds) played through Web Audio.
 
-const CLIPS = ['5', '4', '3', '2', '1', 'start', 'got-it', 'try-again'];
+const CLIPS = ['5', '4', '3', '2', '1', 'start', 'got-it', 'try-again', 'learn-start', 'learn-still', 'learn-swing', 'learn-again', 'learn-done', 'learn-failed'];
 const COUNTDOWN_S = 10;
 const SPOKEN_FROM = 5;
 const GO_BEEP_MS = 250;
