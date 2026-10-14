@@ -95,7 +95,10 @@
         </section>
 
         <section class="card">
-          <h2>Swings</h2>
+          <div class="row spread">
+            <h2>Swings</h2>
+            <button id="btn-save-all" class="small" hidden>Save all swings</button>
+          </div>
           <div id="player-box" hidden>
             <video id="player" playsinline muted controls></video>
             <div class="timeline"><div id="tl-impact" class="tl-impact"></div><div id="tl-head" class="tl-head"></div></div>
@@ -160,6 +163,19 @@
           <button id="btn-share-log" class="small">Share log</button>
         </details>
       </div>
+
+      <dialog id="save-dialog">
+        <h2 id="save-title">Save swings</h2>
+        <p class="muted">Which speed? Slow-motion copies keep every frame; they just play slower.</p>
+        <div class="row">
+          <button class="speed-save" data-factor="1">Normal (1×)</button>
+          <button class="speed-save" data-factor="2">Half speed (½×)</button>
+          <button class="speed-save" data-factor="4">Quarter speed (¼×)</button>
+        </div>
+        <p id="save-status" class="status"></p>
+        <button id="btn-save-go" class="primary" hidden>Save to phone</button>
+        <button id="btn-save-close" class="small">Close</button>
+      </dialog>
 
       <details class="card">
         <summary>Debug log</summary>

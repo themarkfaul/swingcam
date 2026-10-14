@@ -522,3 +522,22 @@ input[type='number'] {
   padding: 6px;
   width: 6em;
 }
+
+.row.spread {
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+}
+
+dialog {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}

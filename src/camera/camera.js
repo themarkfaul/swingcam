@@ -7,7 +7,8 @@ import { createPipeline } from './pipeline.js';
 import { decodeThumbnails } from './calibrate.js';
 import { createVoice } from '../shared/voice.js';
 import { loadSettings, saveSettings, detectorParams, DEFAULT_SETTINGS } from '../shared/settings.js';
-import { saveFile } from '../shared/save.js';
+import { saveFiles } from '../shared/save.js';
+import { retimeMp4 } from '../media/retime.js';
 import { wallNow } from '../shared/clock.js';
 import { SNAP, bestRotation, grayFromImageData } from './orientation.js';
 import { MOTION_SPAN, swingScores, looksLikeSwing } from './motion.js';
@@ -514,6 +515,7 @@ let playbackRate = 1;
 
 function renderClips() {
   $('no-clips').hidden = state.clips.length > 0;
+  $('btn-save-all').hidden = state.clips.length < 2;
   const list = $('clip-list');
   list.innerHTML = '';
   for (const clip of state.clips) {
@@ -562,9 +564,70 @@ $('btn-impact').onclick = () => {
   if (state.current) p.currentTime = state.current.impactOffsetS;
 };
 
-$('btn-save-clip').onclick = () => {
-  if (state.current) saveFile(state.current.blob, `swing-${state.current.n}.mp4`).then((how) => log('info', `swing ${state.current.n} ${how}`));
-};
+// ---------- saving (one swing or all of them, at a chosen speed) ----------
+
+const SPEED_NAMES = { 1: '', 2: '-half-speed', 4: '-quarter-speed' };
+let saveClips = [];
+let readyFiles = null;
+
+function openSaveDialog(clips) {
+  saveClips = clips;
+  readyFiles = null;
+  $('save-title').textContent = clips.length === 1 ? `Save swing ${clips[0].n}` : `Save all ${clips.length} swings`;
+  $('save-status').textContent = '';
+  $('btn-save-go').hidden = true;
+  document.querySelectorAll('.speed-save').forEach((b) => (b.disabled = false));
+  $('save-dialog').showModal();
+}
+
+async function shareFiles(files) {
+  try {
+    const how = await saveFiles(files);
+    $('save-status').textContent = how === 'cancelled' ? 'Cancelled.' : `Saved ${files.length} video${files.length === 1 ? '' : 's'}.`;
+    log('info', `save: ${files.length} files ${how}`);
+  } catch (e) {
+    $('save-status').textContent = `Couldn't save (${e.name}). Try fewer swings, or save them one at a time.`;
+    log('error', 'save', e);
+  }
+}
+
+document.querySelectorAll('.speed-save').forEach((b) => {
+  b.onclick = async () => {
+    const factor = Number(b.dataset.factor);
+    const name = (c) => `swing-${c.n}${SPEED_NAMES[factor]}.mp4`;
+    if (factor === 1) {
+      // No conversion needed, so share straight from this tap.
+      await shareFiles(saveClips.map((c) => new File([c.blob], name(c), { type: 'video/mp4' })));
+      return;
+    }
+    document.querySelectorAll('.speed-save').forEach((x) => (x.disabled = true));
+    const files = [];
+    try {
+      for (const [i, c] of saveClips.entries()) {
+        $('save-status').textContent = `Making slow-motion copies… ${i + 1} of ${saveClips.length}`;
+        c.slow ??= {};
+        c.slow[factor] ??= await retimeMp4(c.blob, factor);
+        files.push(new File([c.slow[factor]], name(c), { type: 'video/mp4' }));
+      }
+    } catch (e) {
+      $('save-status').textContent = `Couldn't make the slow-motion copies: ${e.message}`;
+      log('error', 'slow-motion copy', e);
+      document.querySelectorAll('.speed-save').forEach((x) => (x.disabled = false));
+      return;
+    }
+    // The phone only lets a page share straight after a tap, so ask for one more.
+    readyFiles = files;
+    const mb = files.reduce((n, f) => n + f.size, 0) / 1e6;
+    $('save-status').textContent = `Ready: ${files.length} video${files.length === 1 ? '' : 's'}, ${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB.`;
+    $('btn-save-go').hidden = false;
+    document.querySelectorAll('.speed-save').forEach((x) => (x.disabled = false));
+  };
+});
+
+$('btn-save-go').onclick = () => readyFiles && shareFiles(readyFiles);
+$('btn-save-close').onclick = () => $('save-dialog').close();
+$('btn-save-clip').onclick = () => state.current && openSaveDialog([state.current]);
+$('btn-save-all').onclick = () => state.clips.length && openSaveDialog([...state.clips].reverse());
 
 $('btn-delete-clip').onclick = () => {
   const clip = state.current;
